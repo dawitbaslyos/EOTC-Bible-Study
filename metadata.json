@@ -1,0 +1,7 @@
+{
+  "name": "Senay - The Ethiopian Orthodox Spiritual Guide",
+  "description": "A guided spiritual experience for understanding the 81-book Ethiopian Orthodox canon through traditional Andimta commentary and AI-assisted reflection.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

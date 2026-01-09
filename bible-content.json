@@ -1,0 +1,65 @@
+
+{
+  "gen": {
+    "bookName": "ኦሪት ዘፍጥረት (Genesis)",
+    "chapters": {
+      "1": {
+        "verses": [
+          {
+            "id": "v1",
+            "geez": "በቀዳሚ ገብረ እግዚአብሔር ሰማየ ወምድረ።",
+            "amharic": "በመጀመሪያ እግዚአብሔር ሰማይንና ምድርን ፈጠረ።",
+            "english": "In the beginning God created the heaven and the earth.",
+            "commentary": [
+              {
+                "term": "በቀዳሚ (Beginning)",
+                "explanation": "This refers not just to time, but to the Word (Logos) who is the beginning of all creation.",
+                "theology": "The beginning is Christ, through whom all things were made."
+              }
+            ]
+          },
+          {
+            "id": "v2",
+            "geez": "ወምድርሰ ኢትሬአይ ወኢተደልወት...",
+            "amharic": "ምድርም ባዶ ነበረች...",
+            "english": "And the earth was without form, and void...",
+            "commentary": []
+          }
+        ]
+      },
+      "2": {
+        "verses": [
+          {
+            "id": "v1",
+            "geez": "ወተፈጸሙ ሰማይ ወምድር...",
+            "amharic": "ሰማይና ምድርም ተፈጸሙ...",
+            "english": "Thus the heavens and the earth were finished...",
+            "commentary": []
+          }
+        ]
+      }
+    }
+  },
+  "matt": {
+    "bookName": "Wengel Ze-Matewos (Matthew)",
+    "chapters": {
+      "1": {
+        "verses": [
+          {
+            "id": "v1",
+            "geez": "መጽሐፈ ልደቱ ለኢየሱስ ክርስቶስ...",
+            "amharic": "የኢየሱስ ክርስቶስ የልደቱ መጽሐፍ...",
+            "english": "The book of the generation of Jesus Christ...",
+            "commentary": [
+              {
+                "term": "ልደቱ (Generation)",
+                "explanation": "Tracing the royal and priestly lineage of the Messiah.",
+                "theology": "Connecting the New Covenant with the promises made to Abraham and David."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

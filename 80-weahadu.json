@@ -1,0 +1,20 @@
+
+[
+  { "id": "gen", "name": "Orit Ze-Fidrat (Genesis)", "category": "Law", "totalChapters": 50, "testament": "Old" },
+  { "id": "exo", "name": "Orit Ze-Tsit'at (Exodus)", "category": "Law", "totalChapters": 40, "testament": "Old" },
+  { "id": "lev", "name": "Orit Ze-Lewawyan (Leviticus)", "category": "Law", "totalChapters": 27, "testament": "Old" },
+  { "id": "num", "name": "Orit Ze-Huqlue (Numbers)", "category": "Law", "totalChapters": 36, "testament": "Old" },
+  { "id": "det", "name": "Orit Ze-Dagim (Deuteronomy)", "category": "Law", "totalChapters": 34, "testament": "Old" },
+  { "id": "enoch", "name": "Metsihafe Henok (Enoch)", "category": "Wisdom", "totalChapters": 108, "testament": "Old" },
+  { "id": "jubilees", "name": "Metsihafe Kufale (Jubilees)", "category": "History", "totalChapters": 50, "testament": "Old" },
+  { "id": "sirach", "name": "Metsihafe Sirak (Sirach)", "category": "Wisdom", "totalChapters": 51, "testament": "Old" },
+  { "id": "psalms", "name": "Mezmure Dawit (Psalms)", "category": "Wisdom", "totalChapters": 151, "testament": "Old" },
+  { "id": "isaiah", "name": "Metsihafe Isayas (Isaiah)", "category": "Prophets", "totalChapters": 66, "testament": "Old" },
+  { "id": "matt", "name": "Wengel Ze-Matewos (Matthew)", "category": "Gospels", "totalChapters": 28, "testament": "New" },
+  { "id": "mark", "name": "Wengel Ze-Marqos (Mark)", "category": "Gospels", "totalChapters": 16, "testament": "New" },
+  { "id": "luke", "name": "Wengel Ze-Luqas (Luke)", "category": "Gospels", "totalChapters": 24, "testament": "New" },
+  { "id": "john", "name": "Wengel Ze-Yohannes (John)", "category": "Gospels", "totalChapters": 21, "testament": "New" },
+  { "id": "acts", "name": "Gibirate Hawaryat (Acts)", "category": "History", "totalChapters": 28, "testament": "New" },
+  { "id": "rom", "name": "Romie (Romans)", "category": "Epistles", "totalChapters": 16, "testament": "New" },
+  { "id": "rev", "name": "Abuqalimsis (Revelation)", "category": "Revelation", "totalChapters": 22, "testament": "New" }
+]
