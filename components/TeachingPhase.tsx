@@ -25,7 +25,8 @@ const TeachingPhase: React.FC<Props> = ({ data, onNext }) => {
       <div className="grid md:grid-cols-3 gap-6 flex-1 mb-20 overflow-hidden">
         {/* Left Column: List of Deep Concepts */}
         <div className="col-span-1 space-y-4 overflow-y-auto pr-2">
-          {data.verses.flatMap(v => v.commentary || []).map((c, i) => (
+          {/* Fix: Accessing verses through sections since DailyManna uses sections to preserve titles */}
+          {data.sections.flatMap(s => s.verses).flatMap(v => v.commentary || []).map((c, i) => (
             <button
               key={i}
               onClick={() => setSelectedTerm(c)}

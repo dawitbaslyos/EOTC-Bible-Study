@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { AppPhase, WudaseLiturgy, DailyManna, Quote } from './types';
+import { AppPhase, WudaseLiturgy, DailyManna, Quote, BibleBookJSON } from './types';
 import Dashboard from './components/Dashboard';
 import PreparationPhase from './components/PreparationPhase';
 import ReadingPhase from './components/ReadingPhase';
@@ -14,7 +14,7 @@ const App: React.FC = () => {
   const [isDailyWudase, setIsDailyWudase] = useState(false);
   const [currentBookId, setCurrentBookId] = useState<string>('');
   const [liturgy, setLiturgy] = useState<WudaseLiturgy | null>(null);
-  const [bibleData, setBibleData] = useState<any>(null);
+  const [bibleData, setBibleData] = useState<BibleBookJSON[] | null>(null);
   const [readingData, setReadingData] = useState<DailyManna | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const { completeChapter, getNextChapter } = useProgress();
@@ -26,7 +26,7 @@ const App: React.FC = () => {
       .then(data => setLiturgy(data))
       .catch(err => console.error("Error loading liturgy:", err));
 
-    // Load Bible Content
+    // Load Bible Content (Now an array)
     fetch('./bible-content.json')
       .then(res => res.json())
       .then(data => setBibleData(data))
@@ -41,8 +41,6 @@ const App: React.FC = () => {
         const diff = (now.getTime() - start.getTime()) + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
         const oneDay = 1000 * 60 * 60 * 24;
         const dayOfYear = Math.floor(diff / oneDay);
-        
-        // Use dayOfYear to cycle through available quotes
         const index = dayOfYear % data.length;
         setQuote(data[index]);
       })
@@ -72,50 +70,52 @@ const App: React.FC = () => {
           title: "Wudase Maryam",
           bookId: 'wudase',
           bookName: portion?.dayName || "Daily Portion",
-          chapter: 1, // Using 1 for daily sessions
-          verses: portion?.verses || [],
+          chapter: 1,
+          sections: [{
+            title: portion?.dayName || "Portion",
+            verses: portion?.verses.map(v => ({
+              verse: parseInt(v.id.replace(/\D/g, '') || '1'),
+              text: v.amharic,
+              geez: v.geez,
+              english: v.english,
+              commentary: v.commentary
+            })) || []
+          }],
           liturgicalSeason: 'Normal'
         });
         goToPhase(AppPhase.PREPARATION);
       }
     } else {
-      if (bibleData && bibleData[bookId]) {
-        const chapterNum = getNextChapter(bookId);
-        const bookContent = bibleData[bookId];
-        const chapterContent = bookContent.chapters[chapterNum] || bookContent.chapters["1"];
-        
-        setReadingData({
-          title: bookContent.bookName,
-          bookId: bookId,
-          bookName: bookContent.bookName,
-          chapter: chapterNum,
-          verses: chapterContent.verses,
-          liturgicalSeason: 'General'
-        });
-        goToPhase(AppPhase.READING);
-      } else {
-        console.warn(`Content for book ${bookId} not found.`);
-        setReadingData({
-          title: "Book of Silence",
-          bookId: bookId,
-          bookName: "Metsihafe...",
-          chapter: 1,
-          verses: [{
-            id: "1",
-            geez: "ይህ ክፍል ገና አልተተረጎመም።",
-            amharic: "ይህ ክፍል ገና አልተተረጎመም።",
-            english: "This section is not yet available in the digital scroll.",
-          }],
-          liturgicalSeason: 'Normal'
-        });
-        goToPhase(AppPhase.READING);
+      if (bibleData) {
+        // Find book in array (matching short name or id)
+        const bookObj = bibleData.find(b => 
+          b.book_short_name_en.toLowerCase() === bookId.toLowerCase() || 
+          b.book_name_en.toLowerCase() === bookId.toLowerCase()
+        );
+
+        if (bookObj) {
+          const chapterNum = getNextChapter(bookId);
+          // Find chapter in array
+          const chapterObj = bookObj.chapters.find(c => c.chapter === chapterNum) || bookObj.chapters[0];
+          
+          setReadingData({
+            title: bookObj.book_name_en,
+            bookId: bookId,
+            bookName: bookObj.book_name_am,
+            chapter: chapterObj.chapter,
+            sections: chapterObj.sections,
+            liturgicalSeason: 'General'
+          });
+          goToPhase(AppPhase.READING);
+        } else {
+          console.warn(`Book ${bookId} not found in content array.`);
+        }
       }
     }
   };
 
   const handleFinishFlow = () => {
     if (readingData) {
-      // Logic for logging progress to heatmap
       completeChapter(readingData.bookId, readingData.chapter);
     }
     goToPhase(AppPhase.DASHBOARD);

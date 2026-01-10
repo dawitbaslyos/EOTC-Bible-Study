@@ -15,6 +15,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
   const [selectedWord, setSelectedWord] = useState<Commentary | null>(null);
 
   const renderEnglishText = (text: string, commentaries: Commentary[] = []) => {
+    if (!text) return null;
     let elements: React.ReactNode[] = [text];
     
     commentaries.forEach(c => {
@@ -69,23 +70,41 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
         <div className="w-16" />
       </header>
 
-      <main className="flex-1 p-8 md:p-12 space-y-16 max-w-2xl mx-auto pb-48">
-        {data.verses.map((v) => (
-          <div key={v.id} className="space-y-8 animate-in slide-in-from-bottom-4 duration-700">
-            <div className="flex items-start gap-6">
-               <span className="text-[11px] text-[#d4af37] font-bold pt-1 opacity-50">v.{v.id.replace('v', '')}</span>
-               <div className="space-y-6 flex-1">
-                 <p className="ethiopic text-4xl leading-[1.6] text-black/90 font-medium">
-                   {v.geez}
-                 </p>
-                 <p className="ethiopic text-3xl leading-[1.6] text-[#b4941f] font-light italic">
-                   {v.amharic}
-                 </p>
-                 <p className="text-2xl serif leading-relaxed text-black/75 italic font-light tracking-tight border-l-2 border-[#d4af37]/20 pl-6">
-                   {renderEnglishText(v.english, v.commentary)}
-                 </p>
-               </div>
-            </div>
+      <main className="flex-1 p-8 md:p-12 space-y-12 max-w-2xl mx-auto pb-48">
+        {data.sections.map((section, sIdx) => (
+          <div key={sIdx} className="space-y-12">
+            {section.title && (
+              <div className="text-center py-8">
+                <div className="flex items-center justify-center space-x-4 mb-2">
+                  <div className="h-px w-8 bg-[#d4af37]/30"></div>
+                  <h3 className="ethiopic text-2xl text-[#d4af37] font-bold tracking-wider">{section.title}</h3>
+                  <div className="h-px w-8 bg-[#d4af37]/30"></div>
+                </div>
+              </div>
+            )}
+            
+            {section.verses.map((v) => (
+              <div key={v.verse} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
+                <div className="flex items-start gap-6">
+                   <span className="text-[11px] text-[#d4af37] font-bold pt-1 opacity-50">v.{v.verse}</span>
+                   <div className="space-y-6 flex-1">
+                     {v.geez && (
+                       <p className="ethiopic text-3xl leading-[1.6] text-black/90 font-medium">
+                         {v.geez}
+                       </p>
+                     )}
+                     <p className="ethiopic text-3xl leading-[1.6] text-[#b4941f] font-light italic">
+                       {v.text}
+                     </p>
+                     {v.english && (
+                       <p className="text-xl serif leading-relaxed text-black/75 italic font-light tracking-tight border-l-2 border-[#d4af37]/20 pl-6">
+                         {renderEnglishText(v.english, v.commentary)}
+                       </p>
+                     )}
+                   </div>
+                </div>
+              </div>
+            ))}
           </div>
         ))}
 

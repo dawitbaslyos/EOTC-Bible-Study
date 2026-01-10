@@ -10,6 +10,35 @@ export enum AppPhase {
 export type Testament = 'Old' | 'New';
 export type BookCategory = 'Law' | 'History' | 'Wisdom' | 'Prophets' | 'Gospels' | 'Epistles' | 'Revelation';
 
+// New JSON Structure Interfaces
+export interface BibleVerseJSON {
+  verse: number;
+  text: string;
+  geez?: string; // Optional for compatibility
+  english?: string; // Optional for compatibility
+  commentary?: Commentary[];
+}
+
+export interface BibleSectionJSON {
+  title: string;
+  verses: BibleVerseJSON[];
+}
+
+export interface BibleChapterJSON {
+  chapter: number;
+  sections: BibleSectionJSON[];
+}
+
+export interface BibleBookJSON {
+  book_number: number;
+  book_name_am: string;
+  book_short_name_am: string;
+  book_name_en: string;
+  book_short_name_en: string;
+  testament: string;
+  chapters: BibleChapterJSON[];
+}
+
 export interface Book {
   id: string;
   name: string;
@@ -20,10 +49,11 @@ export interface Book {
 
 export interface Verse {
   id: string;
-  geez: string;
+  geez?: string;
   amharic: string;
-  english: string;
+  english?: string;
   commentary?: Commentary[];
+  sectionTitle?: string; // To keep track of which section a verse belongs to
 }
 
 export interface Commentary {
@@ -51,7 +81,7 @@ export interface DailyManna {
   bookId: string;
   bookName: string;
   chapter: number;
-  verses: Verse[];
+  sections: BibleSectionJSON[]; // Pass full sections to preserve titles
   liturgicalSeason: string;
 }
 
