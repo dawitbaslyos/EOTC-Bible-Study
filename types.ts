@@ -10,12 +10,18 @@ export enum AppPhase {
 export type Testament = 'Old' | 'New';
 export type BookCategory = 'Law' | 'History' | 'Wisdom' | 'Prophets' | 'Gospels' | 'Epistles' | 'Revelation';
 
+export type LanguageVisibility = {
+  geez: boolean;
+  amharic: boolean;
+  english: boolean;
+};
+
 // New JSON Structure Interfaces
 export interface BibleVerseJSON {
   verse: number;
   text: string;
-  geez?: string; // Optional for compatibility
-  english?: string; // Optional for compatibility
+  geez?: string;
+  english?: string;
   commentary?: Commentary[];
 }
 
@@ -53,7 +59,7 @@ export interface Verse {
   amharic: string;
   english?: string;
   commentary?: Commentary[];
-  sectionTitle?: string; // To keep track of which section a verse belongs to
+  sectionTitle?: string;
 }
 
 export interface Commentary {
@@ -81,7 +87,8 @@ export interface DailyManna {
   bookId: string;
   bookName: string;
   chapter: number;
-  sections: BibleSectionJSON[]; // Pass full sections to preserve titles
+  totalChapters: number;
+  sections: BibleSectionJSON[];
   liturgicalSeason: string;
 }
 

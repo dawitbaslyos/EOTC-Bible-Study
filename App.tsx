@@ -56,7 +56,7 @@ const App: React.FC = () => {
     }, 600);
   };
 
-  const startFlow = (bookId: string, isWudase: boolean) => {
+  const startFlow = (bookId: string, isWudase: boolean, specificChapter?: number) => {
     setIsDailyWudase(isWudase);
     setCurrentBookId(bookId);
 
@@ -71,6 +71,7 @@ const App: React.FC = () => {
           bookId: 'wudase',
           bookName: portion?.dayName || "Daily Portion",
           chapter: 1,
+          totalChapters: 1,
           sections: [{
             title: portion?.dayName || "Portion",
             verses: portion?.verses.map(v => ({
@@ -90,11 +91,12 @@ const App: React.FC = () => {
         // Find book in array (matching short name or id)
         const bookObj = bibleData.find(b => 
           b.book_short_name_en.toLowerCase() === bookId.toLowerCase() || 
-          b.book_name_en.toLowerCase() === bookId.toLowerCase()
+          b.book_name_en.toLowerCase() === bookId.toLowerCase() ||
+          b.book_short_name_am === bookId
         );
 
         if (bookObj) {
-          const chapterNum = getNextChapter(bookId);
+          const chapterNum = specificChapter || getNextChapter(bookId);
           // Find chapter in array
           const chapterObj = bookObj.chapters.find(c => c.chapter === chapterNum) || bookObj.chapters[0];
           
@@ -103,6 +105,7 @@ const App: React.FC = () => {
             bookId: bookId,
             bookName: bookObj.book_name_am,
             chapter: chapterObj.chapter,
+            totalChapters: bookObj.chapters.length, // Uses the actual number of chapters in the JSON
             sections: chapterObj.sections,
             liturgicalSeason: 'General'
           });
@@ -150,6 +153,7 @@ const App: React.FC = () => {
             onNext={() => goToPhase(AppPhase.SUMMARY)} 
             onOpenMemhir={() => goToPhase(AppPhase.REFLECTION)}
             onFinish={handleFinishFlow}
+            onSelectChapter={(chapter) => startFlow(readingData!.bookId, false, chapter)}
           />
         );
       case AppPhase.SUMMARY:

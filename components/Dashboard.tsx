@@ -9,7 +9,7 @@ import { Book, Quote } from '../types';
 import { getEthiopianDate, EthiopianDate } from '../utils/ethiopianCalendar';
 
 interface Props {
-  onStart: (bookId: string, isDailyWudase: boolean) => void;
+  onStart: (bookId: string, isDailyWudase: boolean, chapter?: number) => void;
   quote?: Quote;
 }
 
@@ -98,7 +98,11 @@ const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
           </button>
         </div>
 
-        <BookList books={books} userStats={stats} onContinue={(id) => onStart(id, false)} />
+        <BookList 
+          books={books} 
+          userStats={stats} 
+          onContinue={(id, chapter) => onStart(id, false, chapter)} 
+        />
       </div>
 
       <LibraryDrawer 

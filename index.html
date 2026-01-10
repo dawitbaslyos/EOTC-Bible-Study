@@ -15,7 +15,7 @@
             overflow-x: hidden;
         }
         .ethiopic {
-            font-family: 'Noto+Sans+Ethiopic', sans-serif;
+            font-family: 'Noto Sans Ethiopic', sans-serif;
         }
         .serif {
             font-family: 'Playfair Display', serif;
@@ -39,6 +39,13 @@
         ::-webkit-scrollbar-thumb {
             background: #d4af37;
             border-radius: 2px;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
         }
     </style>
 <script type="importmap">
