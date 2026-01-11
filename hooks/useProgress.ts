@@ -36,21 +36,28 @@ export const useProgress = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newStats));
   };
 
+  const updateLastAccessed = (bookId: string) => {
+    const newStats = { ...stats };
+    if (!newStats.bookProgress[bookId]) {
+      newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
+    } else {
+      newStats.bookProgress[bookId].lastAccessed = Date.now();
+    }
+    saveStats(newStats);
+  };
+
   const completeChapter = (bookId: string, chapter: number) => {
     const todayStr = getLocalDateString(new Date());
     const newStats = { ...stats };
     
-    // Update Global Study History (Heatmap Source)
-    // This logs every individual completion (Bible or Wudase) per day
     newStats.studyHistory[todayStr] = (newStats.studyHistory[todayStr] || 0) + 1;
     
-    // Update Specific Book Progress (Chapter tracking)
     if (!newStats.bookProgress[bookId]) {
-      newStats.bookProgress[bookId] = { bookId, completedChapters: [] };
+      newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
     }
     
-    // For Bible books, we track specific chapters. 
-    // For 'wudase', we treat the 'chapter' param as a session index.
+    newStats.bookProgress[bookId].lastAccessed = Date.now();
+    
     if (!newStats.bookProgress[bookId].completedChapters.includes(chapter)) {
       newStats.bookProgress[bookId].completedChapters.push(chapter);
       newStats.bookProgress[bookId].completedChapters.sort((a, b) => a - b);
@@ -65,21 +72,16 @@ export const useProgress = () => {
     return Math.max(...progress.completedChapters) + 1;
   };
 
-  /**
-   * Returns data for the last 28 days, aligned to Mon-Sun weeks.
-   */
   const getHeatmapData = () => {
     const data = [];
     const today = new Date();
     const todayStr = getLocalDateString(today);
     
-    // Find the Monday of the current week
-    const currentDay = today.getDay(); // 0=Sun, 1=Mon, ...
+    const currentDay = today.getDay();
     const diffToMonday = (currentDay === 0 ? 6 : currentDay - 1);
     const thisMonday = new Date(today);
     thisMonday.setDate(today.getDate() - diffToMonday);
     
-    // Go back 3 additional weeks to get 4 full weeks
     const startPoint = new Date(thisMonday);
     startPoint.setDate(thisMonday.getDate() - 21);
     
@@ -96,5 +98,5 @@ export const useProgress = () => {
     return data;
   };
 
-  return { stats, completeChapter, getNextChapter, getHeatmapData };
+  return { stats, completeChapter, getNextChapter, getHeatmapData, updateLastAccessed };
 };

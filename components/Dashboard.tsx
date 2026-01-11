@@ -10,10 +10,11 @@ import { getEthiopianDate, EthiopianDate } from '../utils/ethiopianCalendar';
 
 interface Props {
   onStart: (bookId: string, isDailyWudase: boolean, chapter?: number) => void;
+  onOpenMemhir: () => void;
   quote?: Quote;
 }
 
-const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
+const Dashboard: React.FC<Props> = ({ onStart, onOpenMemhir, quote }) => {
   const { stats, getHeatmapData } = useProgress();
   const [books, setBooks] = useState<Book[]>([]);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -21,7 +22,6 @@ const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
   const heatmapData = getHeatmapData(); 
 
   useEffect(() => {
-    // Update date every hour to ensure it stays current if app is left open
     const timer = setInterval(() => {
       setEthDate(getEthiopianDate());
     }, 3600000);
@@ -37,14 +37,21 @@ const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
   return (
     <div className="flex-1 flex flex-col p-6 space-y-6 animate-in fade-in slide-in-from-bottom-5 duration-1000">
       {/* Top Navigation */}
-      <div className="relative flex items-center justify-center py-4">
+      <div className="relative flex items-center justify-between py-4">
         <button 
           onClick={() => setIsDrawerOpen(true)}
-          className="absolute left-0 p-3 bg-white/5 rounded-2xl border border-white/10 text-[#d4af37] hover:scale-105 transition-all z-10"
+          className="p-3 bg-white/5 rounded-2xl border border-white/10 text-[#d4af37] hover:scale-105 transition-all z-10"
         >
           <Icons.Library />
         </button>
         <h1 className="text-3xl serif gold-glow tracking-[0.3em] text-[#d4af37] font-bold">SENAY</h1>
+        <button 
+          onClick={onOpenMemhir}
+          className="p-3 bg-[#d4af37]/10 rounded-2xl border border-[#d4af37]/20 text-[#d4af37] hover:scale-105 transition-all group"
+          title="Ask Memhir"
+        >
+          <Icons.Message />
+        </button>
       </div>
 
       <div className="flex flex-col items-center space-y-2 pb-4">
@@ -54,7 +61,7 @@ const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
         <div className="flex items-center space-x-3 text-gray-500">
           <div className="h-px w-8 bg-white/10"></div>
           <span className="text-[10px] uppercase tracking-[0.2em] font-light">
-            {quote?.source || "Quote of the Day"}
+            {quote?.source || "Daily Quote"}
           </span>
           <div className="h-px w-8 bg-white/10"></div>
         </div>
@@ -62,30 +69,22 @@ const Dashboard: React.FC<Props> = ({ onStart, quote }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-          {/* Top Card: Live Ethiopian Date Layout */}
           <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden shadow-2xl">
-            
             <div className="flex justify-between items-start mb-1">
               <span className="text-[11px] text-[#d4af37] font-bold uppercase tracking-widest opacity-80">
                 [{ethDate.monthName} • {ethDate.year}]
               </span>
               <span className="text-[10px] text-gray-500 uppercase tracking-tighter">saint of the day</span>
             </div>
-
             <div className="flex justify-between items-start mb-6">
               <span className="text-[13px] text-white/60 serif italic font-light">{ethDate.yearName}</span>
-              <div className="w-1/2 text-right">
-                {/* Space reserved for extra liturgical info if needed */}
-              </div>
             </div>
-
             <div className="flex justify-between items-end mb-8">
               <span className="text-6xl font-light serif leading-none tracking-tighter text-white/90">Day {ethDate.day}</span>
               <span className="text-xl text-white font-semibold serif italic opacity-90 border-b border-[#d4af37]/20 pb-1 max-w-[50%] text-right leading-tight">
                 "{SAINT_OF_THE_DAY[ethDate.day] || "All Saints"}"
               </span>
             </div>
-
             <Heatmap data={heatmapData} />
           </div>
 

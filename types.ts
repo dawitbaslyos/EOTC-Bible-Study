@@ -4,7 +4,8 @@ export enum AppPhase {
   PREPARATION = 'PREPARATION', 
   READING = 'READING',         
   SUMMARY = 'SUMMARY',         
-  REFLECTION = 'REFLECTION'    
+  REFLECTION = 'REFLECTION',
+  ASK_MEMHIR = 'ASK_MEMHIR'
 }
 
 export type Testament = 'Old' | 'New';
@@ -16,7 +17,6 @@ export type LanguageVisibility = {
   english: boolean;
 };
 
-// New JSON Structure Interfaces
 export interface BibleVerseJSON {
   verse: number;
   text: string;
@@ -95,6 +95,7 @@ export interface DailyManna {
 export interface BookProgress {
   bookId: string;
   completedChapters: number[];
+  lastAccessed: number;
 }
 
 export interface UserStats {
@@ -106,6 +107,10 @@ export interface UserStats {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  attachment?: {
+    type: 'book' | 'quote';
+    title: string;
+  };
 }
 
 export interface Quote {

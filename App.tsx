@@ -6,6 +6,7 @@ import PreparationPhase from './components/PreparationPhase';
 import ReadingPhase from './components/ReadingPhase';
 import SummaryPhase from './components/SummaryPhase';
 import ReflectionPhase from './components/ReflectionPhase';
+import AskMemhir from './components/AskMemhir';
 import { useProgress } from './hooks/useProgress';
 
 const App: React.FC = () => {
@@ -17,7 +18,7 @@ const App: React.FC = () => {
   const [bibleData, setBibleData] = useState<BibleBookJSON[] | null>(null);
   const [readingData, setReadingData] = useState<DailyManna | null>(null);
   const [quote, setQuote] = useState<Quote | null>(null);
-  const { completeChapter, getNextChapter } = useProgress();
+  const { completeChapter, getNextChapter, updateLastAccessed } = useProgress();
 
   useEffect(() => {
     // Load Liturgy
@@ -26,13 +27,13 @@ const App: React.FC = () => {
       .then(data => setLiturgy(data))
       .catch(err => console.error("Error loading liturgy:", err));
 
-    // Load Bible Content (Now an array)
+    // Load Bible Content
     fetch('./bible-content.json')
       .then(res => res.json())
       .then(data => setBibleData(data))
       .catch(err => console.error("Error loading bible content:", err));
 
-    // Load Quotes and select one for the day
+    // Load Quotes
     fetch('./quotes.json')
       .then(res => res.json())
       .then(data => {
@@ -59,6 +60,7 @@ const App: React.FC = () => {
   const startFlow = (bookId: string, isWudase: boolean, specificChapter?: number) => {
     setIsDailyWudase(isWudase);
     setCurrentBookId(bookId);
+    if (!isWudase) updateLastAccessed(bookId);
 
     if (isWudase) {
       if (liturgy) {
@@ -86,33 +88,27 @@ const App: React.FC = () => {
         });
         goToPhase(AppPhase.PREPARATION);
       }
-    } else {
-      if (bibleData) {
-        // Find book in array (matching short name or id)
-        const bookObj = bibleData.find(b => 
-          b.book_short_name_en.toLowerCase() === bookId.toLowerCase() || 
-          b.book_name_en.toLowerCase() === bookId.toLowerCase() ||
-          b.book_short_name_am === bookId
-        );
+    } else if (bibleData) {
+      const bookObj = bibleData.find(b => 
+        b.book_short_name_en.toLowerCase() === bookId.toLowerCase() || 
+        b.book_name_en.toLowerCase() === bookId.toLowerCase() ||
+        b.book_short_name_am === bookId
+      );
 
-        if (bookObj) {
-          const chapterNum = specificChapter || getNextChapter(bookId);
-          // Find chapter in array
-          const chapterObj = bookObj.chapters.find(c => c.chapter === chapterNum) || bookObj.chapters[0];
-          
-          setReadingData({
-            title: bookObj.book_name_en,
-            bookId: bookId,
-            bookName: bookObj.book_name_am,
-            chapter: chapterObj.chapter,
-            totalChapters: bookObj.chapters.length, // Uses the actual number of chapters in the JSON
-            sections: chapterObj.sections,
-            liturgicalSeason: 'General'
-          });
-          goToPhase(AppPhase.READING);
-        } else {
-          console.warn(`Book ${bookId} not found in content array.`);
-        }
+      if (bookObj) {
+        const chapterNum = specificChapter || getNextChapter(bookId);
+        const chapterObj = bookObj.chapters.find(c => c.chapter === chapterNum) || bookObj.chapters[0];
+        
+        setReadingData({
+          title: bookObj.book_name_en,
+          bookId: bookId,
+          bookName: bookObj.book_name_am,
+          chapter: chapterObj.chapter,
+          totalChapters: bookObj.chapters.length,
+          sections: chapterObj.sections,
+          liturgicalSeason: 'General'
+        });
+        goToPhase(AppPhase.READING);
       }
     }
   };
@@ -125,7 +121,7 @@ const App: React.FC = () => {
   };
 
   const renderPhase = () => {
-    if ((isDailyWudase && !liturgy) || (!isDailyWudase && phase !== AppPhase.DASHBOARD && !readingData)) {
+    if ((isDailyWudase && !liturgy) || (!isDailyWudase && phase !== AppPhase.DASHBOARD && phase !== AppPhase.ASK_MEMHIR && !readingData)) {
       return (
         <div className="flex-1 flex flex-col items-center justify-center space-y-4">
           <div className="w-12 h-12 border-4 border-[#d4af37]/20 border-t-[#d4af37] rounded-full animate-spin" />
@@ -136,7 +132,20 @@ const App: React.FC = () => {
 
     switch (phase) {
       case AppPhase.DASHBOARD:
-        return <Dashboard onStart={startFlow} quote={quote || undefined} />;
+        return (
+          <Dashboard 
+            onStart={startFlow} 
+            quote={quote || undefined} 
+            onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)} 
+          />
+        );
+      case AppPhase.ASK_MEMHIR:
+        return (
+          <AskMemhir 
+            onClose={() => goToPhase(AppPhase.DASHBOARD)} 
+            currentQuote={quote || undefined} 
+          />
+        );
       case AppPhase.PREPARATION:
         return (
           <PreparationPhase 
@@ -151,7 +160,7 @@ const App: React.FC = () => {
             data={readingData!} 
             isDailyManna={isDailyWudase}
             onNext={() => goToPhase(AppPhase.SUMMARY)} 
-            onOpenMemhir={() => goToPhase(AppPhase.REFLECTION)}
+            onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)}
             onFinish={handleFinishFlow}
             onSelectChapter={(chapter) => startFlow(readingData!.bookId, false, chapter)}
           />
@@ -172,7 +181,7 @@ const App: React.FC = () => {
           />
         );
       default:
-        return <Dashboard onStart={startFlow} quote={quote || undefined} />;
+        return <Dashboard onStart={startFlow} onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)} quote={quote || undefined} />;
     }
   };
 
@@ -181,19 +190,6 @@ const App: React.FC = () => {
       <div className="max-w-5xl mx-auto min-h-screen flex flex-col">
         {renderPhase()}
       </div>
-      
-      {phase !== AppPhase.DASHBOARD && phase !== AppPhase.PREPARATION && (
-        <div className="fixed bottom-0 left-0 w-full p-4 flex justify-center space-x-2 bg-black/80 backdrop-blur-xl border-t border-white/5 z-30">
-          {Object.values(AppPhase).map((p) => (
-            <div 
-              key={p} 
-              className={`h-1 w-8 rounded-full transition-all duration-500 ${
-                p === phase ? 'bg-[#d4af37] w-12 shadow-[0_0_15px_#d4af37]' : 'bg-gray-800/50'
-              }`} 
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };
