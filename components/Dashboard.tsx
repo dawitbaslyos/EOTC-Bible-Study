@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Icons, SAINT_OF_THE_DAY } from '../constants';
+import { Icons } from '../constants';
 import { useProgress } from '../hooks/useProgress';
 import Heatmap from './dashboard/Heatmap';
 import BookList from './dashboard/BookList';
@@ -17,6 +17,7 @@ interface Props {
 const Dashboard: React.FC<Props> = ({ onStart, onOpenMemhir, quote }) => {
   const { stats, getHeatmapData } = useProgress();
   const [books, setBooks] = useState<Book[]>([]);
+  const [saints, setSaints] = useState<Record<string, string>>({});
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [ethDate, setEthDate] = useState<EthiopianDate>(getEthiopianDate());
   const heatmapData = getHeatmapData(); 
@@ -26,6 +27,13 @@ const Dashboard: React.FC<Props> = ({ onStart, onOpenMemhir, quote }) => {
       setEthDate(getEthiopianDate());
     }, 3600000);
 
+    // Fetch Saints data
+    fetch('./saints.json')
+      .then(res => res.json())
+      .then(setSaints)
+      .catch(err => console.error("Error loading saints:", err));
+
+    // Fetch Library books
     fetch('./80-weahadu.json')
       .then(res => res.json())
       .then(data => setBooks(data))
@@ -69,31 +77,48 @@ const Dashboard: React.FC<Props> = ({ onStart, onOpenMemhir, quote }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-white/5 border border-white/10 rounded-[2.5rem] p-8 relative overflow-hidden shadow-2xl">
-            <div className="flex justify-between items-start mb-1">
-              <span className="text-[11px] text-[#d4af37] font-bold uppercase tracking-widest opacity-80">
-                [{ethDate.monthName} • {ethDate.year}]
+          {/* Calendar Card Polished & Compact */}
+          <div className="bg-white/[0.03] border border-white/10 rounded-[3rem] p-8 relative overflow-hidden shadow-2xl transition-all duration-700 hover:bg-white/[0.04]">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#d4af37]/5 blur-3xl -mr-12 -mt-12 rounded-full opacity-30" />
+            
+            <div className="flex flex-col mb-6 relative z-10">
+              <span className="text-[9px] font-bold text-gray-500 tracking-[0.3em] uppercase mb-0.5">
+                {ethDate.year} • {ethDate.yearName.replace("Year of St. ", "")}
               </span>
-              <span className="text-[10px] text-gray-500 uppercase tracking-tighter">saint of the day</span>
-            </div>
-            <div className="flex justify-between items-start mb-6">
-              <span className="text-[13px] text-white/60 serif italic font-light">{ethDate.yearName}</span>
-            </div>
-            <div className="flex justify-between items-end mb-8">
-              <span className="text-6xl font-light serif leading-none tracking-tighter text-white/90">Day {ethDate.day}</span>
-              <span className="text-xl text-white font-semibold serif italic opacity-90 border-b border-[#d4af37]/20 pb-1 max-w-[50%] text-right leading-tight">
-                "{SAINT_OF_THE_DAY[ethDate.day] || "All Saints"}"
+              <span className="text-3xl text-[#d4af37] font-black uppercase tracking-[0.4em] block leading-tight">
+                {ethDate.monthName}
               </span>
             </div>
-            <Heatmap data={heatmapData} />
+
+            <div className="flex flex-col items-start mb-6 relative z-10">
+              <div className="flex items-center space-x-3">
+                <span className="text-7xl font-light serif text-white/95 tracking-tighter leading-none">
+                  {ethDate.day}
+                </span>
+                <div className="flex flex-col border-l border-white/10 pl-5 py-1">
+                   <span className="text-[6px] uppercase tracking-[0.4em] text-[#d4af37] font-black mb-1 opacity-30">Saint of the day</span>
+                   <span className="text-lg text-white/80 serif italic leading-tight max-w-[140px] tracking-tight">
+                    {saints[ethDate.day.toString()] || "All Saints"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Heatmap Section - Now visually dominant */}
+            <div className="pt-8 border-t border-white/5 relative z-10">
+              <div className="flex items-center justify-between mb-4">
+                 <span className="text-[8px] uppercase tracking-[0.3em] text-gray-600 font-black">Spiritual Momentum</span>
+              </div>
+              <Heatmap data={heatmapData} />
+            </div>
           </div>
 
           <button 
             onClick={() => onStart('wudase', true)}
-            className="w-full bg-[#d4af37] text-black font-bold py-7 rounded-[2.5rem] shadow-2xl hover:bg-[#c0a030] hover:scale-[1.02] transition-all flex flex-col items-center justify-center group"
+            className="w-full bg-[#d4af37] text-black font-bold py-7 rounded-[3rem] shadow-2xl hover:bg-[#c0a030] hover:scale-[1.02] transition-all flex flex-col items-center justify-center group"
           >
             <span className="text-2xl serif mb-1">Daily Wudase</span>
-            <span className="text-[9px] uppercase tracking-widest opacity-60">Seek Thy Praises</span>
+            <span className="text-[9px] uppercase tracking-widest opacity-60 font-black">Open Praises</span>
           </button>
         </div>
 

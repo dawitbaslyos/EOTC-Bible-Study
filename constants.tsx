@@ -8,10 +8,6 @@ export const ETHIOPIAN_MONTHS = [
 
 export const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];
 
-export const SAINT_OF_THE_DAY: Record<number, string> = {
-  1: "Lidet (Birth of Mary)", 12: "Michael the Archangel", 19: "Gabriel the Archangel",
-  21: "Holy Virgin Mary", 27: "Medhane Alem (Savior of the World)", 29: "Birth of Christ"
-};
 
 export const Icons = {
   Menu: () => (
