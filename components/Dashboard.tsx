@@ -27,12 +27,12 @@ const Dashboard: React.FC<Props> = ({ onStart, onOpenMemhir, quote }) => {
       setEthDate(getEthiopianDate());
     }, 3600000);
 
-    fetch('./saints.json')
+    fetch('./data/saints.json')
       .then(res => res.json())
       .then(setSaints)
       .catch(err => console.error("Error loading saints:", err));
 
-    fetch('./80-weahadu.json')
+    fetch('./data/80-weahadu.json')
       .then(res => res.json())
       .then(data => setBooks(data))
       .catch(err => console.error("Error loading books:", err));

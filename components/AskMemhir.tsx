@@ -22,7 +22,7 @@ const AskMemhir: React.FC<Props> = ({ onClose, currentQuote }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch('./80-weahadu.json')
+    fetch('.r/data/80-weahadu.json')
       .then(res => res.json())
       .then(setBooks);
   }, []);

@@ -1,5 +1,5 @@
 [
-  { "id": "gen", "name": "Orit Ze-Fidrat (Genesis)", "category": "Law", "totalChapters": 50, "testament": "Old" },
+  { "id": "gen", "name": "Orit Ze-Fitret (Genesis)", "category": "Law", "totalChapters": 50, "testament": "Old" },
   { "id": "exo", "name": "Orit Ze-Tsit'at (Exodus)", "category": "Law", "totalChapters": 40, "testament": "Old" },
   { "id": "lev", "name": "Orit Ze-Lewawyan (Leviticus)", "category": "Law", "totalChapters": 27, "testament": "Old" },
   { "id": "num", "name": "Orit Ze-Huqlue (Numbers)", "category": "Law", "totalChapters": 36, "testament": "Old" },

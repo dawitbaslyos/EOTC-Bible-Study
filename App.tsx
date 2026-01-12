@@ -21,17 +21,17 @@ const App: React.FC = () => {
   const { completeChapter, getNextChapter, updateLastAccessed } = useProgress();
 
   useEffect(() => {
-    fetch('./wudase-liturgy.json')
+    fetch('./data/wudase-liturgy.json')
       .then(res => res.json())
       .then(setLiturgy)
       .catch(err => console.error("Error loading liturgy:", err));
 
-    fetch('./bible-content.json')
+    fetch('./data/bible-content.json')
       .then(res => res.json())
       .then(setBibleData)
       .catch(err => console.error("Error loading bible content:", err));
 
-    fetch('./quotes.json')
+    fetch('./data/quotes.json')
       .then(res => res.json())
       .then(data => {
         const now = new Date();
