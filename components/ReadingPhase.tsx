@@ -25,7 +25,6 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
   const trayRef = useRef<HTMLDivElement>(null);
   const { stats } = useProgress();
 
-  // Auto-scroll current chapter into view when tray opens
   useEffect(() => {
     if (showChapterTray && trayRef.current) {
       const activeBtn = trayRef.current.querySelector(`[data-chapter="${data.chapter}"]`);
@@ -97,15 +96,24 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
           </div>
 
           <div className="flex flex-col items-center">
-             <h2 className="serif text-xs font-bold leading-tight uppercase tracking-widest opacity-40">{data.title}</h2>
+             <h2 className="serif text-[9px] font-bold leading-tight uppercase tracking-[0.2em] opacity-40">
+               {isDailyManna ? "Divine Wudase" : data.title}
+             </h2>
              <button 
-               onClick={() => setShowChapterTray(!showChapterTray)}
+               onClick={() => !isDailyManna && setShowChapterTray(!showChapterTray)}
                className={`flex items-center space-x-2 transition-all duration-300 ${showChapterTray ? 'text-[#d4af37] scale-110' : 'text-[#2c2c2c] hover:text-[#d4af37]'}`}
+               disabled={isDailyManna}
              >
-               <span className="serif text-lg font-bold">Chapter {data.chapter}</span>
-               <div className={`transition-transform duration-300 ${showChapterTray ? 'rotate-180' : ''}`}>
-                 <Icons.ChevronRight />
-               </div>
+               <span className="serif text-lg font-bold">
+                 {isDailyManna 
+                   ? (data.chapter === 1 ? "Standard Prayers" : data.title) 
+                   : `Chapter ${data.chapter}`}
+               </span>
+               {!isDailyManna && (
+                 <div className={`transition-transform duration-300 ${showChapterTray ? 'rotate-180' : ''}`}>
+                   <Icons.ChevronRight />
+                 </div>
+               )}
              </button>
           </div>
 
@@ -130,51 +138,53 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
           </div>
         </div>
 
-        {/* Fold-out Chapter Tray */}
-        <div 
-          className={`overflow-hidden transition-all duration-500 ease-in-out border-t border-black/5 bg-black/[0.02] ${
-            showChapterTray ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
-          }`}
-        >
+        {/* Fold-out Chapter Tray (only for non-Wudase) */}
+        {!isDailyManna && (
           <div 
-            ref={trayRef}
-            className="flex items-center space-x-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth no-scrollbar"
+            className={`overflow-hidden transition-all duration-500 ease-in-out border-t border-black/5 bg-black/[0.02] ${
+              showChapterTray ? 'max-h-24 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'
+            }`}
           >
-            {Array.from({ length: data.totalChapters }).map((_, i) => {
-              const num = i + 1;
-              const isCurrent = data.chapter === num;
-              const isCompleted = stats.bookProgress[data.bookId]?.completedChapters.includes(num);
-              
-              return (
-                <button
-                  key={num}
-                  data-chapter={num}
-                  onClick={() => {
-                    onSelectChapter(num);
-                    setShowChapterTray(false);
-                  }}
-                  className={`flex-shrink-0 w-12 h-12 rounded-full snap-center flex flex-col items-center justify-center transition-all relative ${
-                    isCurrent 
-                      ? 'bg-[#d4af37] text-white scale-110 shadow-[0_0_15px_rgba(212,175,55,0.4)]' 
-                      : 'bg-white border border-black/5 text-gray-400 hover:border-[#d4af37]/30 hover:text-[#d4af37]'
-                  }`}
-                >
-                  <span className="text-sm font-bold serif">{num}</span>
-                  {isCompleted && !isCurrent && (
-                    <div className="absolute -bottom-1 w-1 h-1 bg-[#d4af37] rounded-full" />
-                  )}
-                </button>
-              );
-            })}
-            <div className="flex-shrink-0 w-12" /> {/* Spacer for end padding */}
+            <div 
+              ref={trayRef}
+              className="flex items-center space-x-4 overflow-x-auto px-6 py-4 snap-x snap-mandatory scroll-smooth no-scrollbar"
+            >
+              {Array.from({ length: data.totalChapters }).map((_, i) => {
+                const num = i + 1;
+                const isCurrent = data.chapter === num;
+                const isCompleted = stats.bookProgress[data.bookId]?.completedChapters.includes(num);
+                
+                return (
+                  <button
+                    key={num}
+                    data-chapter={num}
+                    onClick={() => {
+                      onSelectChapter(num);
+                      setShowChapterTray(false);
+                    }}
+                    className={`flex-shrink-0 w-12 h-12 rounded-full snap-center flex flex-col items-center justify-center transition-all relative ${
+                      isCurrent 
+                        ? 'bg-[#d4af37] text-white scale-110 shadow-[0_0_15px_rgba(212,175,55,0.4)]' 
+                        : 'bg-white border border-black/5 text-gray-400 hover:border-[#d4af37]/30 hover:text-[#d4af37]'
+                    }`}
+                  >
+                    <span className="text-sm font-bold serif">{num}</span>
+                    {isCompleted && !isCurrent && (
+                      <div className="absolute -bottom-1 w-1 h-1 bg-[#d4af37] rounded-full" />
+                    )}
+                  </button>
+                );
+              })}
+              <div className="flex-shrink-0 w-12" />
+            </div>
           </div>
-        </div>
+        )}
       </header>
 
       <main className="flex-1 p-6 md:p-12 space-y-12 max-w-2xl mx-auto pb-48">
         {data.sections.map((section, sIdx) => (
           <div key={sIdx} className="space-y-12">
-            {section.title && (
+            {section.title && !isDailyManna && (
               <div className="text-center py-4">
                 <div className="flex items-center justify-center space-x-4 mb-2">
                   <div className="h-px w-8 bg-[#d4af37]/30"></div>
@@ -187,7 +197,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
             {section.verses.map((v) => (
               <div key={v.verse} className="space-y-6 animate-in slide-in-from-bottom-4 duration-700">
                 <div className="flex items-start gap-4 sm:gap-6">
-                   <span className="text-[11px] text-[#d4af37] font-bold pt-1 opacity-40 w-8">v.{v.verse}</span>
+                   {!isDailyManna && <span className="text-[11px] text-[#d4af37] font-bold pt-1 opacity-40 w-8">v.{v.verse}</span>}
                    <div className="space-y-6 flex-1">
                      {v.geez && langs.geez && (
                        <p className="ethiopic text-2xl sm:text-3xl leading-[1.6] text-black/90 font-medium animate-in fade-in duration-500">
@@ -195,7 +205,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
                        </p>
                      )}
                      {v.text && langs.amharic && (
-                       <p className="ethiopic text-2xl sm:text-3xl leading-[1.6] text-[#b4941f] font-light italic animate-in fade-in duration-500">
+                       <p className="ethiopic text-2xl sm:text-3xl leading-[1.6] text-[#b4941f] font-light italic animate-in fade-in duration-500 whitespace-pre-wrap">
                          {v.text}
                        </p>
                      )}
@@ -219,7 +229,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
       </main>
 
       {selectedWord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/40 backdrop-blur-md">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 bg-black/40 backdrop-blur-md">
           <div className="bg-white rounded-[2rem] p-8 shadow-2xl max-w-sm w-full border border-black/5 animate-in zoom-in-95 duration-300">
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -245,17 +255,17 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
         {isDailyManna ? (
           <button 
             onClick={onNext}
-            className="bg-[#2c2c2c] text-[#f4f1ea] px-12 py-5 rounded-full font-bold shadow-2xl flex items-center space-x-3 hover:scale-105 hover:bg-black transition-all group"
+            className="bg-[#2c2c2c] text-[#f4f1ea] px-12 py-5 rounded-full font-bold shadow-2xl flex items-center space-x-3 hover:scale-105 hover:bg-black transition-all group active:scale-95"
           >
-            <span className="serif text-xl tracking-wide">Summarize</span>
+            <span className="serif text-xl tracking-wide">{data.chapter === 1 ? "Next Portion" : "Summarize"}</span>
             <div className="group-hover:translate-x-1 transition-transform text-[#d4af37]">
-              <Icons.Eye />
+              <Icons.ChevronRight />
             </div>
           </button>
         ) : (
           <button 
             onClick={onFinish}
-            className="bg-[#2c2c2c] text-[#f4f1ea] px-12 py-5 rounded-full font-bold shadow-2xl flex items-center space-x-3 hover:scale-105 hover:bg-black transition-all group"
+            className="bg-[#2c2c2c] text-[#f4f1ea] px-12 py-5 rounded-full font-bold shadow-2xl flex items-center space-x-3 hover:scale-105 hover:bg-black transition-all group active:scale-95"
           >
             <span className="serif text-xl tracking-wide">Done Reading</span>
             <div className="group-hover:translate-x-1 transition-transform text-[#d4af37]">

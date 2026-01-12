@@ -35,9 +35,9 @@ const SummaryPhase: React.FC<Props> = ({ wudaseAmlakText, onFinish }) => {
       <div className="mt-12 flex flex-col items-center space-y-4">
         <button 
           onClick={onFinish}
-          className="w-full max-w-md bg-[#d4af37] text-black py-6 rounded-full font-bold shadow-2xl hover:bg-[#c0a030] hover:scale-[1.02] transition-all flex items-center justify-center space-x-3"
+          className="w-full max-w-md bg-[#d4af37] text-black py-6 rounded-full font-bold shadow-2xl hover:bg-[#c0a030] hover:scale-[1.02] transition-all flex items-center justify-center space-x-3 active:scale-95"
         >
-          <span className="serif text-xl">Closing Prayers</span>
+          <span className="serif text-xl">Finish Reading</span>
           <Icons.ChevronRight />
         </button>
       </div>
