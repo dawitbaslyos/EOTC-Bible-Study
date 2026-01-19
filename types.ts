@@ -3,8 +3,14 @@ export enum AppPhase {
   DASHBOARD = 'DASHBOARD',
   PREPARATION = 'PREPARATION', 
   READING = 'READING',
-  ASK_MEMHIR = 'ASK_MEMHIR'
+  SUMMARY = 'SUMMARY',
+  ASK_MEMHIR = 'ASK_MEMHIR',
+  ONBOARDING = 'ONBOARDING',
+  SETTINGS = 'SETTINGS'
 }
+
+export type Theme = 'dark' | 'light';
+export type RitualTime = 'day' | 'night';
 
 export type Testament = 'All' | 'Old' | 'New';
 export type BookCategory = 'Law' | 'History' | 'Wisdom' | 'Prophets' | 'Gospels' | 'Epistles' | 'Revelation';
@@ -21,6 +27,12 @@ export interface BibleVerseJSON {
   geez?: string;
   english?: string;
   commentary?: Commentary[];
+}
+
+export interface Commentary {
+  term: string;
+  explanation: string;
+  theology: string;
 }
 
 export interface BibleSectionJSON {
@@ -51,16 +63,6 @@ export interface Book {
   testament: string; 
 }
 
-export interface Verse {
-  id: string;
-  geez?: string;
-  amharic: string;
-  english?: string;
-  commentary?: Commentary[];
-  sectionTitle?: string;
-}
-
-// Updated WudasePortion to use sections instead of verses to match App.tsx usage
 export interface WudasePortion {
   dayName: string;
   sections: BibleSectionJSON[];
@@ -68,7 +70,6 @@ export interface WudasePortion {
 
 export interface WudaseLiturgy {
   opening: string;
-  // Updated yezewetir from string to object with title and sections to fix App.tsx errors
   yezewetir: {
     title: string;
     sections: BibleSectionJSON[];
@@ -95,7 +96,6 @@ export interface BookProgress {
   lastAccessed: number;
 }
 
-// Added DedicationLevel type to support tracking user commitment
 export type DedicationLevel = 'Novice' | 'Steady' | 'Devoted';
 
 export interface UserStats {
@@ -103,12 +103,12 @@ export interface UserStats {
   studyHistory: Record<string, number>;
   bookProgress: Record<string, BookProgress>;
   totalSessions: number;
-  // Added optional fields for user preferences and dedication levels
   dedicationLevel?: DedicationLevel;
-  preferredTime?: {
-    enabled: boolean;
-    time?: string;
-  };
+  preferredRituals?: RitualTime[];
+  hasCompletedOnboarding?: boolean;
+  streak: number;
+  lastStudyDate?: string;
+  isPremium?: boolean;
 }
 
 export interface ChatMessage {
@@ -145,4 +145,18 @@ export interface EthiopianHoliday {
   day: number;
   type: 'Major' | 'Minor' | 'Historical';
   description?: string;
+}
+
+export type NotificationType = 'info' | 'success' | 'warning' | 'emotional';
+export type NotificationPriority = 'low' | 'normal' | 'high';
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  type: NotificationType;
+  priority: NotificationPriority;
+  read: boolean;
+  createdAt: number;
+  actionUrl?: string;
 }

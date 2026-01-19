@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { UserStats, BookProgress, FastingSeason, EthiopianHoliday, DedicationLevel } from '../types';
+import { UserStats, BookProgress, FastingSeason, EthiopianHoliday } from '../types';
 import { getEthiopianDate } from '../utils/ethiopianCalendar';
 
 const STORAGE_KEY = 'senay_user_stats';
@@ -9,7 +9,8 @@ const initialStats: UserStats = {
   rank: 'Mihiman (Faithful)',
   studyHistory: {},
   bookProgress: {},
-  totalSessions: 0
+  totalSessions: 0,
+  streak: 0
 };
 
 export const getLocalDateString = (date: Date) => {
@@ -41,7 +42,7 @@ export const useProgress = () => {
         setHolidays(data);
       } catch (err) {
         console.error("Error loading holidays for heatmap:", err);
-        setHolidays([]); // Fallback to empty
+        setHolidays([]); 
       }
     };
     
@@ -51,14 +52,6 @@ export const useProgress = () => {
   const saveStats = (newStats: UserStats) => {
     setStats(newStats);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(newStats));
-  };
-
-  const setDedicationLevel = (level: DedicationLevel) => {
-    saveStats({ ...stats, dedicationLevel: level });
-  };
-
-  const setPreferredTime = (enabled: boolean, time?: string) => {
-    saveStats({ ...stats, preferredTime: { enabled, time } });
   };
 
   const updateLastAccessed = (bookId: string) => {
@@ -72,21 +65,36 @@ export const useProgress = () => {
   };
 
   const completeChapter = (bookId: string, chapter: number) => {
-    const todayStr = getLocalDateString(new Date());
+    const today = new Date();
+    const todayStr = getLocalDateString(today);
     const newStats = { ...stats };
     
+    // Streak logic
+    if (newStats.lastStudyDate !== todayStr) {
+      const yesterday = new Date(today);
+      yesterday.setDate(today.getDate() - 1);
+      const yesterdayStr = getLocalDateString(yesterday);
+      
+      if (newStats.lastStudyDate === yesterdayStr) {
+        newStats.streak += 1;
+      } else {
+        newStats.streak = 1;
+      }
+      newStats.lastStudyDate = todayStr;
+    }
+
     newStats.studyHistory[todayStr] = (newStats.studyHistory[todayStr] || 0) + 1;
     newStats.totalSessions = (newStats.totalSessions || 0) + 1;
     
-    if (!newStats.bookProgress[bookId]) {
-      newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
-    }
-    
-    newStats.bookProgress[bookId].lastAccessed = Date.now();
-    
-    if (!newStats.bookProgress[bookId].completedChapters.includes(chapter)) {
-      newStats.bookProgress[bookId].completedChapters.push(chapter);
-      newStats.bookProgress[bookId].completedChapters.sort((a, b) => a - b);
+    if (bookId !== 'wudase') {
+      if (!newStats.bookProgress[bookId]) {
+        newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
+      }
+      newStats.bookProgress[bookId].lastAccessed = Date.now();
+      if (!newStats.bookProgress[bookId].completedChapters.includes(chapter)) {
+        newStats.bookProgress[bookId].completedChapters.push(chapter);
+        newStats.bookProgress[bookId].completedChapters.sort((a, b) => a - b);
+      }
     }
 
     saveStats(newStats);
@@ -108,6 +116,7 @@ export const useProgress = () => {
     const lastDayOfMonth = new Date(year, month + 1, 0);
     
     let startDay = firstDayOfMonth.getDay();
+    // Assuming Monday start for heatmap
     let leadingDays = startDay === 0 ? 6 : startDay - 1;
 
     const findLiturgicalInfo = (date: Date) => {
@@ -131,39 +140,42 @@ export const useProgress = () => {
       };
     };
 
+    // Leading days
     for (let i = leadingDays; i > 0; i--) {
       const d = new Date(year, month, 1 - i);
       const dStr = getLocalDateString(d);
       const lit = findLiturgicalInfo(d);
-      data.push({
-        count: stats.studyHistory[dStr] || 0,
-        isToday: dStr === todayStr,
-        isPadding: true,
-        ...lit
+      data.push({ 
+        count: stats.studyHistory[dStr] || 0, 
+        isToday: dStr === todayStr, 
+        isPadding: true, 
+        ...lit 
       });
     }
 
+    // Days in current month
     for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
       const d = new Date(year, month, i);
       const dStr = getLocalDateString(d);
       const lit = findLiturgicalInfo(d);
-      data.push({
-        count: stats.studyHistory[dStr] || 0,
-        isToday: dStr === todayStr,
-        isPadding: false,
-        ...lit
+      data.push({ 
+        count: stats.studyHistory[dStr] || 0, 
+        isToday: dStr === todayStr, 
+        isPadding: false, 
+        ...lit 
       });
     }
 
+    // Trailing days
     while (data.length % 7 !== 0) {
       const d = new Date(year, month + 1, data.length - leadingDays - lastDayOfMonth.getDate() + 1);
       const dStr = getLocalDateString(d);
       const lit = findLiturgicalInfo(d);
-      data.push({
-        count: stats.studyHistory[dStr] || 0,
-        isToday: dStr === todayStr,
-        isPadding: true,
-        ...lit
+      data.push({ 
+        count: stats.studyHistory[dStr] || 0, 
+        isToday: dStr === todayStr, 
+        isPadding: true, 
+        ...lit 
       });
     }
 
@@ -176,8 +188,7 @@ export const useProgress = () => {
     getNextChapter, 
     getHeatmapData, 
     updateLastAccessed,
-    setDedicationLevel,
-    setPreferredTime,
+    saveStats,
     daysPracticed: Object.keys(stats.studyHistory).length
   };
 };

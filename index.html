@@ -7,67 +7,71 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic:wght@300;400;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-secondary: #121214;
+            --card-bg: rgba(255, 255, 255, 0.03);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --gold: #d4af37;
+            --gold-muted: rgba(212, 175, 55, 0.2);
+            --input-bg: rgba(255, 255, 255, 0.05);
+            --selection: rgba(212, 175, 55, 0.3);
+            --heatmap-empty: rgba(255, 255, 255, 0.05);
+            --overlay-bg: rgba(0, 0, 0, 0.6);
+        }
+
+        .light-theme {
+            --bg-primary: #fcfaf7;
+            --bg-secondary: #f4f1ea;
+            --card-bg: rgba(0, 0, 0, 0.04);
+            --card-border: rgba(0, 0, 0, 0.12);
+            --text-primary: #1a1a1c;
+            --text-secondary: #4a5568;
+            --text-muted: #718096;
+            --gold: #b4941f;
+            --gold-muted: rgba(180, 148, 31, 0.2);
+            --input-bg: rgba(0, 0, 0, 0.05);
+            --selection: rgba(180, 148, 31, 0.2);
+            --heatmap-empty: rgba(0, 0, 0, 0.08);
+            --overlay-bg: rgba(0, 0, 0, 0.3);
+        }
+
         body {
-            background-color: #0a0a0c;
-            color: #e2e8f0;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
             font-family: 'Inter', sans-serif;
             overflow-x: hidden;
+            transition: background-color 0.4s ease, color 0.4s ease;
         }
-        .ethiopic {
-            font-family: 'Noto Sans Ethiopic', sans-serif;
-        }
-        .serif {
-            font-family: 'Playfair Display', serif;
-        }
-        .animate-breathe {
-            animation: breathe 8s ease-in-out infinite;
-        }
-        @keyframes breathe {
-            0%, 100% { transform: scale(1); opacity: 0.5; }
-            50% { transform: scale(1.1); opacity: 0.8; }
-        }
+
+        .ethiopic { font-family: 'Noto Sans Ethiopic', sans-serif; }
+        .serif { font-family: 'Playfair Display', serif; }
+        
         .gold-glow {
-            text-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+            text-shadow: 0 0 15px var(--gold-muted);
         }
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { 
+            background: var(--gold); 
+            border-radius: 10px;
+            border: 2px solid var(--bg-primary);
         }
-        ::-webkit-scrollbar-track {
-            background: #111;
+
+        .custom-scrollbar {
+            scrollbar-width: thin;
+            scrollbar-color: var(--gold) transparent;
         }
-        ::-webkit-scrollbar-thumb {
-            background: #d4af37;
-            border-radius: 2px;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        
-        /* Vertical Writing Styles */
-        .writing-vertical-rl {
-            writing-mode: vertical-rl;
-            text-orientation: mixed;
-            unicode-bidi: isolate;
-        }
-        
-        /* Ensure the cursor and text direction feel right in vertical containers */
-        .writing-vertical-rl textarea, 
-        .writing-vertical-rl div {
-            cursor: vertical-text;
-        }
-        
-        /* Custom horizontal scrolling for vertical text overflow */
-        .scroll-horizontal-inverse {
-            direction: rtl; /* Makes vertical-rl lines stack from right to left */
-        }
-        .scroll-horizontal-inverse > * {
-            direction: ltr; /* Keeps content direction standard inside */
-        }
+
+        .bg-primary { background-color: var(--bg-primary); }
+        .bg-secondary { background-color: var(--bg-secondary); }
+        .text-primary { color: var(--text-primary); }
+        .text-secondary { color: var(--text-secondary); }
+        .border-theme { border-color: var(--card-border); }
     </style>
 <script type="importmap">
 {

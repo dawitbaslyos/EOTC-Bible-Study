@@ -19,18 +19,29 @@ interface Props {
 const Heatmap: React.FC<Props> = ({ data }) => {
   const [tooltip, setTooltip] = useState<{index: number, count: number, fastingName: string | null, holidayName: string | null} | null>(null);
 
+  // Define intensity levels based on count (shading increases with more activity)
+  // Tracking both daily check-ins and book insights via common studyHistory
+  const getIntensityStyles = (count: number) => {
+    if (count === 0) return "bg-[var(--heatmap-empty)] border-theme";
+    // Thresholds: 1-2, 3-4, 5-6, 7+
+    if (count <= 2) return "bg-[var(--gold)] opacity-30 border-[var(--gold)]/20";
+    if (count <= 4) return "bg-[var(--gold)] opacity-55 border-[var(--gold)]/40 shadow-sm";
+    if (count <= 6) return "bg-[var(--gold)] opacity-80 border-[var(--gold)]/60 shadow-md";
+    return "bg-[var(--gold)] opacity-100 shadow-[0_0_12px_var(--gold-muted)] border-[var(--gold)] text-black font-black";
+  };
+
   return (
     <div className="space-y-4 relative">
       {/* Tooltip display */}
       {tooltip && (
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-[#d4af37] text-black text-[10px] font-bold py-2 px-4 rounded-2xl shadow-xl z-20 animate-in fade-in zoom-in duration-200 flex flex-col items-center whitespace-nowrap min-w-[120px]">
+        <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-[var(--gold)] text-black text-[10px] font-bold py-2 px-4 rounded-2xl shadow-xl z-20 animate-in fade-in zoom-in duration-200 flex flex-col items-center whitespace-nowrap min-w-[120px] border border-black/10">
           {tooltip.holidayName && (
             <span className="text-[9px] uppercase tracking-wider border-b border-black/10 pb-1 mb-1 font-black">
               ✨ {tooltip.holidayName}
             </span>
           )}
-          <span>{tooltip.count} {tooltip.count === 1 ? 'Reading' : 'Readings'} Completed</span>
-          {tooltip.fastingName && <span className="text-[8px] uppercase opacity-80 mt-0.5 tracking-tighter">Fast: {tooltip.fastingName.split(' (')[0]}</span>}
+          <span>{tooltip.count} {tooltip.count === 1 ? 'Insight' : 'Insights'} Gathered</span>
+          {tooltip.fastingName && <span className="text-[8px] uppercase opacity-80 mt-0.5 tracking-tighter">Season: {tooltip.fastingName.split(' (')[0]}</span>}
         </div>
       )}
 
@@ -38,7 +49,7 @@ const Heatmap: React.FC<Props> = ({ data }) => {
         {WEEK_DAYS.map((d, i) => (
           <span 
             key={i} 
-            className="text-[10px] text-center font-bold text-gray-700"
+            className="text-[10px] text-center font-black text-[var(--text-muted)] opacity-60"
           >
             {d}
           </span>
@@ -53,34 +64,25 @@ const Heatmap: React.FC<Props> = ({ data }) => {
           const fastingColor = item.fastingColor;
           const isMajorHoliday = item.isMajorHoliday;
 
-          // Determine the box background style
-          let baseClass = "";
           let style: React.CSSProperties = {};
+          let intensityClass = getIntensityStyles(val);
+          let baseClass = `aspect-square rounded-[6px] transition-all relative cursor-help flex items-center justify-center text-[8px] overflow-hidden ${intensityClass} `;
 
-          if (val > 0) {
-            if (val === 1) baseClass = "bg-[#d4af37]/30 border border-[#d4af37]/10";
-            else if (val === 2) baseClass = "bg-[#d4af37]/60 border border-[#d4af37]/20";
-            else baseClass = "bg-[#d4af37] shadow-[0_0_10px_#d4af37]";
-            
-            if (fastingColor) {
-              style = { ...style, borderColor: fastingColor, borderWidth: '2px' };
-            }
-          } else {
-            if (fastingColor) {
-              style = { ...style, backgroundColor: `${fastingColor}22`, borderColor: `${fastingColor}44`, borderWidth: '1px' };
+          // Handle Fasting Season styling
+          if (fastingColor) {
+            if (val === 0) {
+              style = { ...style, backgroundColor: `${fastingColor}15`, borderColor: `${fastingColor}35`, borderWidth: '1px' };
             } else {
-              baseClass = "bg-white/5 border border-white/5";
+              style = { ...style, borderBottomColor: fastingColor, borderBottomWidth: '3px' };
             }
           }
 
-          // Override for major holidays - subtle gold ring
           if (isMajorHoliday && !isToday) {
-            baseClass += " ring-1 ring-[#d4af37]/30";
+            baseClass += " ring-1 ring-[var(--gold)]/30 ring-offset-1 ring-offset-transparent";
           }
 
-          // Override for "Today" - purely border indicator
           if (isToday) {
-             baseClass += " ring-2 ring-[#d4af37] ring-offset-2 ring-offset-black z-10 scale-110 shadow-[0_0_15px_rgba(212,175,55,0.3)]";
+             baseClass += " ring-2 ring-[var(--gold)] ring-offset-2 ring-offset-[var(--bg-primary)] z-10 scale-105";
           }
 
           return (
@@ -90,29 +92,34 @@ const Heatmap: React.FC<Props> = ({ data }) => {
               onMouseLeave={() => setTooltip(null)}
               onTouchStart={() => setTooltip({ index: i, count: val, fastingName: item.fastingName || null, holidayName: item.holidayName || null })}
               style={style}
-              className={`aspect-square rounded-[4px] transition-all relative cursor-help group ${baseClass} ${
-                isPadding ? 'opacity-20 grayscale' : 'opacity-100'
-              } hover:scale-110 active:scale-95`}
+              className={`${baseClass} ${isPadding ? 'opacity-10 grayscale-[50%]' : 'opacity-100'} hover:scale-110 active:scale-95`}
             >
-              {/* If fasting and no progress, add a small dot of the color */}
-              {fastingColor && val === 0 && (
-                <div className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full" style={{ backgroundColor: fastingColor }} />
-              )}
-              {/* If it's a holiday but no progress, a tiny gold spark */}
-              {item.holidayName && val === 0 && !isPadding && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-0.5 h-0.5 bg-[#d4af37] rounded-full animate-pulse" />
-                </div>
-              )}
+              {val > 2 && <span className="pointer-events-none select-none text-black/50 font-black">{val}</span>}
               
-              <span className="sr-only">{val} completions</span>
+              {val === 0 && !isPadding && (
+                <>
+                  {fastingColor && (
+                     <div className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full" style={{ backgroundColor: fastingColor }} />
+                  )}
+                  {item.holidayName && (
+                    <div className="w-1 h-1 bg-[var(--gold)] rounded-full animate-pulse" />
+                  )}
+                </>
+              )}
             </div>
           );
         })}
       </div>
-      <p className="text-[8px] text-center text-gray-600 mt-2 uppercase tracking-[0.2em]">
-        Touch cells for history
-      </p>
+      <div className="flex items-center justify-between mt-4 px-1">
+        <span className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest font-bold">Insight Map</span>
+        <div className="flex items-center space-x-1">
+           <span className="text-[8px] text-[var(--text-muted)] mr-1">Less</span>
+           {[0, 2, 4, 6, 8].map(lvl => (
+             <div key={lvl} className={`w-2.5 h-2.5 rounded-[2px] ${getIntensityStyles(lvl)}`} />
+           ))}
+           <span className="text-[8px] text-[var(--text-muted)] ml-1">More</span>
+        </div>
+      </div>
     </div>
   );
 };
