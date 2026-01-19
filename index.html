@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -32,6 +31,7 @@
         }
         ::-webkit-scrollbar {
             width: 4px;
+            height: 4px;
         }
         ::-webkit-scrollbar-track {
             background: #111;
@@ -46,6 +46,27 @@
         .no-scrollbar {
             -ms-overflow-style: none;
             scrollbar-width: none;
+        }
+        
+        /* Vertical Writing Styles */
+        .writing-vertical-rl {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            unicode-bidi: isolate;
+        }
+        
+        /* Ensure the cursor and text direction feel right in vertical containers */
+        .writing-vertical-rl textarea, 
+        .writing-vertical-rl div {
+            cursor: vertical-text;
+        }
+        
+        /* Custom horizontal scrolling for vertical text overflow */
+        .scroll-horizontal-inverse {
+            direction: rtl; /* Makes vertical-rl lines stack from right to left */
+        }
+        .scroll-horizontal-inverse > * {
+            direction: ltr; /* Keeps content direction standard inside */
         }
     </style>
 <script type="importmap">

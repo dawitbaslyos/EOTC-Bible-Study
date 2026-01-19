@@ -2,20 +2,18 @@
 export enum AppPhase {
   DASHBOARD = 'DASHBOARD',
   PREPARATION = 'PREPARATION', 
-  READING = 'READING',         
-  SUMMARY = 'SUMMARY',         
-  REFLECTION = 'REFLECTION',
+  READING = 'READING',
   ASK_MEMHIR = 'ASK_MEMHIR'
 }
 
-export type Testament = 'Old' | 'New';
+export type Testament = 'All' | 'Old' | 'New';
 export type BookCategory = 'Law' | 'History' | 'Wisdom' | 'Prophets' | 'Gospels' | 'Epistles' | 'Revelation';
 
-export type LanguageVisibility = {
+export interface LanguageVisibility {
   geez: boolean;
   amharic: boolean;
   english: boolean;
-};
+}
 
 export interface BibleVerseJSON {
   verse: number;
@@ -50,7 +48,7 @@ export interface Book {
   name: string;
   category: BookCategory;
   totalChapters: number;
-  testament: Testament;
+  testament: string; 
 }
 
 export interface Verse {
@@ -62,20 +60,19 @@ export interface Verse {
   sectionTitle?: string;
 }
 
-export interface Commentary {
-  term: string;
-  explanation: string;
-  theology: string;
-}
-
+// Updated WudasePortion to use sections instead of verses to match App.tsx usage
 export interface WudasePortion {
   dayName: string;
-  verses: Verse[];
+  sections: BibleSectionJSON[];
 }
 
 export interface WudaseLiturgy {
   opening: string;
-  yezewetir: string;
+  // Updated yezewetir from string to object with title and sections to fix App.tsx errors
+  yezewetir: {
+    title: string;
+    sections: BibleSectionJSON[];
+  };
   portions: Record<string, WudasePortion>;
   wudaseAmlak: string;
   closing: string;
@@ -98,22 +95,54 @@ export interface BookProgress {
   lastAccessed: number;
 }
 
+// Added DedicationLevel type to support tracking user commitment
+export type DedicationLevel = 'Novice' | 'Steady' | 'Devoted';
+
 export interface UserStats {
   rank: string;
   studyHistory: Record<string, number>;
   bookProgress: Record<string, BookProgress>;
+  totalSessions: number;
+  // Added optional fields for user preferences and dedication levels
+  dedicationLevel?: DedicationLevel;
+  preferredTime?: {
+    enabled: boolean;
+    time?: string;
+  };
 }
 
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   attachment?: {
-    type: 'book' | 'quote';
+    type: 'book' | 'quote' | 'audio';
     title: string;
+    data?: string; 
+    mimeType?: string;
   };
 }
 
 export interface Quote {
   text: string;
   source: string;
+}
+
+export interface FastingSeason {
+  id: string;
+  name: string;
+  ethStartMonth: number;
+  ethStartDay: number;
+  ethEndMonth: number;
+  ethEndDay: number;
+  color: string;
+  isMovable?: boolean;
+}
+
+export interface EthiopianHoliday {
+  id: string;
+  name: string;
+  month: number;
+  day: number;
+  type: 'Major' | 'Minor' | 'Historical';
+  description?: string;
 }

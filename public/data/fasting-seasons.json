@@ -1,0 +1,52 @@
+
+[
+  {
+    "id": "nebiyat",
+    "name": "Tsome Nebiyat (Advent)",
+    "ethStartMonth": 3,
+    "ethStartDay": 15,
+    "ethEndMonth": 4,
+    "ethEndDay": 28,
+    "color": "#818cf8"
+  },
+  {
+    "id": "nenewe",
+    "name": "Tsome Nenewe",
+    "ethStartMonth": 6,
+    "ethStartDay": 1,
+    "ethEndMonth": 6,
+    "ethEndDay": 3,
+    "color": "#fbbf24",
+    "isMovable": true,
+    "note": "Simplified for 2025 cycle"
+  },
+  {
+    "id": "abiytsom",
+    "name": "Abiy Tsom (Great Lent)",
+    "ethStartMonth": 6,
+    "ethStartDay": 17,
+    "ethEndMonth": 8,
+    "ethEndDay": 12,
+    "color": "#f87171",
+    "isMovable": true,
+    "note": "Simplified for 2025 cycle"
+  },
+  {
+    "id": "hawaryat",
+    "name": "Tsome Hawaryat (Apostles)",
+    "ethStartMonth": 10,
+    "ethStartDay": 9,
+    "ethEndMonth": 11,
+    "ethEndDay": 5,
+    "color": "#34d399"
+  },
+  {
+    "id": "filseta",
+    "name": "Tsome Filseta (Assumption)",
+    "ethStartMonth": 12,
+    "ethStartDay": 1,
+    "ethEndMonth": 12,
+    "ethEndDay": 15,
+    "color": "#f472b6"
+  }
+]

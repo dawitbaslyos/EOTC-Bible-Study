@@ -1,0 +1,19 @@
+
+[
+  { "id": "enkutatash", "name": "Enkutatash (New Year)", "month": 1, "day": 1, "type": "Major" },
+  { "id": "yohannes", "name": "Be'ale Yohannes", "month": 1, "day": 2, "type": "Minor" },
+  { "id": "meskel", "name": "Meskel (Finding of the True Cross)", "month": 1, "day": 17, "type": "Major" },
+  { "id": "tsion", "name": "Hidar Tsion", "month": 3, "day": 21, "type": "Major" },
+  { "id": "ledet", "name": "Ledet (Christmas)", "month": 4, "day": 29, "type": "Major" },
+  { "id": "timkat", "name": "Timkat (Epiphany)", "month": 5, "day": 11, "type": "Major" },
+  { "id": "kana", "name": "Kana Ze Galila", "month": 5, "day": 12, "type": "Minor" },
+  { "id": "asteryo", "name": "Asteryo Mariam", "month": 5, "day": 21, "type": "Major" },
+  { "id": "kidane_mihret", "name": "Kidane Mihret", "month": 6, "day": 16, "type": "Major" },
+  { "id": "adwa", "name": "Victory of Adwa", "month": 6, "day": 23, "type": "Historical" },
+  { "id": "hosanna", "name": "Hosanna", "month": 8, "day": 5, "type": "Major", "note": "Approximate based on 2025" },
+  { "id": "tinsae", "name": "Fasika (Easter)", "month": 8, "day": 12, "type": "Major", "note": "Approximate based on 2025" },
+  { "id": "patriots", "name": "Patriots' Victory Day", "month": 8, "day": 27, "type": "Historical" },
+  { "id": "gabriel", "name": "Hamle Gabriel", "month": 11, "day": 19, "type": "Major" },
+  { "id": "buhe", "name": "Buhe (Debre Tabor)", "month": 12, "day": 13, "type": "Major" },
+  { "id": "filseta_end", "name": "Filseta Mariam", "month": 12, "day": 16, "type": "Major" }
+]

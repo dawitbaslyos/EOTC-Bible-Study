@@ -13,7 +13,7 @@ const SummaryPhase: React.FC<Props> = ({ wudaseAmlakText, onFinish }) => {
       <header className="mb-12 text-center md:text-left">
         <div className="flex items-center justify-center md:justify-start space-x-3 text-[#d4af37] mb-2 opacity-80">
           <Icons.Lotus />
-          <span className="text-[10px] uppercase font-bold tracking-[0.3em]">Step 3: አንቀጸ ብርሃን </span>
+          <span className="text-[10px] uppercase font-bold tracking-[0.3em]">Step 3: Wudase Amlak</span>
         </div>
         <h1 className="text-4xl md:text-5xl serif gold-glow">Praises of the Almighty</h1>
       </header>
@@ -24,7 +24,7 @@ const SummaryPhase: React.FC<Props> = ({ wudaseAmlakText, onFinish }) => {
             <div className="w-10 h-10 rounded-full bg-[#d4af37]/10 flex items-center justify-center text-[#d4af37]">
               <Icons.Eye />
             </div>
-            <h3 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-500">አንቀጸ ብርሃን</h3>
+            <h3 className="text-[10px] uppercase font-bold tracking-[0.2em] text-gray-500">The Divine Praises</h3>
           </div>
           <p className="text-lg md:text-xl serif italic leading-relaxed text-gray-200 ethiopic whitespace-pre-wrap">
             {wudaseAmlakText}

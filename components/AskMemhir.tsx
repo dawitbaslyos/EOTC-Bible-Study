@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icons } from '../constants';
 import { ChatMessage, Book, Quote } from '../types';
-import { getSpiritualReflection } from '../services/geminiService';
+import { getSpiritualReflectionStream } from '../services/geminiService';
 
 interface Props {
   onClose: () => void;
@@ -18,20 +18,27 @@ const AskMemhir: React.FC<Props> = ({ onClose, currentQuote }) => {
   const [selectedAttachment, setSelectedAttachment] = useState<ChatMessage['attachment'] | null>(null);
   const [books, setBooks] = useState<Book[]>([]);
   const [voiceBars, setVoiceBars] = useState<number[]>(new Array(12).fill(10));
+  const [streamingText, setStreamingText] = useState('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   useEffect(() => {
-    fetch('.r/data/80-weahadu.json')
+    fetch('./data/80-weahadu.json')
       .then(res => res.json())
       .then(setBooks);
   }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
     }
-  }, [messages, isTyping]);
+  }, [messages, isTyping, streamingText]);
 
   useEffect(() => {
     let interval: any;
@@ -45,184 +52,276 @@ const AskMemhir: React.FC<Props> = ({ onClose, currentQuote }) => {
     return () => clearInterval(interval);
   }, [isRecording]);
 
-  const handleSendMessage = async (text: string = inputValue) => {
-    if (!text.trim() && !selectedAttachment) return;
+  const blobToBase64 = (blob: Blob): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const result = reader.result as string;
+        const base64String = result.split(',')[1];
+        resolve(base64String);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const base64Data = await blobToBase64(audioBlob);
+        handleSendMessage("", { data: base64Data, mimeType: 'audio/webm' });
+        
+        // Stop all tracks to release the microphone
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      alert("Microphone access is required for voice inquiries.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const handleSendMessage = async (text: string = inputValue, audioData?: { data: string, mimeType: string }) => {
+    if (!text.trim() && !selectedAttachment && !audioData) return;
+
+    const attachment = audioData ? {
+      type: 'audio' as const,
+      title: 'Voice Inquiry',
+      data: audioData.data,
+      mimeType: audioData.mimeType
+    } : (selectedAttachment || undefined);
 
     const userMsg: ChatMessage = { 
       role: 'user', 
-      content: text || (selectedAttachment ? `I'd like to learn more about this ${selectedAttachment.type}: ${selectedAttachment.title}.` : ""),
-      attachment: selectedAttachment || undefined
+      content: text || (audioData ? "Sent a voice inquiry." : (selectedAttachment ? `Exploring: ${selectedAttachment.title} (${selectedAttachment.type}).` : "")),
+      attachment
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
     setSelectedAttachment(null);
     setIsTyping(true);
+    setStreamingText('');
 
-    const context = selectedAttachment 
-      ? `Discussion centered on: ${selectedAttachment.title} (${selectedAttachment.type}).` 
-      : 'General inquiry about Tewahedo tradition.';
-    
-    const response = await getSpiritualReflection([...messages, userMsg], context);
+    try {
+      const context = selectedAttachment 
+        ? `Focusing on: ${selectedAttachment.title} (${selectedAttachment.type}).` 
+        : 'Inquiry in Tewahedo context.';
+      
+      const stream = await getSpiritualReflectionStream([...messages, userMsg], context);
 
-    setIsTyping(false);
-    setMessages(prev => [...prev, { role: 'assistant', content: response }]);
-  };
+      let fullResponse = '';
+      for await (const chunk of stream) {
+        const textChunk = chunk.text;
+        if (textChunk) {
+          fullResponse += textChunk;
+          setStreamingText(fullResponse);
+        }
+      }
 
-  const startVoiceSim = () => {
-    setIsRecording(true);
-    setTimeout(() => {
-      setIsRecording(false);
-      setInputValue("How can I better understand the history of the Tewahedo Church?");
-    }, 2000);
+      setIsTyping(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: fullResponse }]);
+      setStreamingText('');
+    } catch (error) {
+      console.error("Streaming Error:", error);
+      setIsTyping(false);
+      setMessages(prev => [...prev, { role: 'assistant', content: "I apologize, the connection to the sacred scrolls was momentarily lost. Please ask again." }]);
+    }
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-[#0a0a0c] animate-in fade-in duration-1000 h-screen overflow-hidden">
-      <header className="p-6 border-b border-white/10 flex justify-between items-center backdrop-blur-xl bg-black/40 sticky top-0 z-20">
-        <div className="flex items-center space-x-4">
-          <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-[#d4af37]">
+    <div className="flex-1 flex flex-col bg-[#0a0a0c] animate-in fade-in duration-700 h-screen overflow-hidden">
+      <header className="px-4 py-4 md:px-8 md:py-6 border-b border-white/5 flex justify-between items-center backdrop-blur-xl bg-black/40 sticky top-0 z-20">
+        <div className="flex items-center space-x-3 md:space-x-5">
+          <div className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-[#d4af37]/10 border border-[#d4af37]/20 flex items-center justify-center text-[#d4af37] shadow-[0_0_20px_rgba(212,175,55,0.1)]">
             <Icons.Message />
           </div>
           <div>
-            <h2 className="serif text-xl text-[#d4af37] gold-glow">Ask Memhir</h2>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 font-bold">Tradition Helper</p>
+            <h2 className="serif text-xl md:text-2xl text-[#d4af37] gold-glow tracking-wide">Ask Memhir</h2>
+            <p className="text-[8px] md:text-[10px] uppercase tracking-[0.3em] text-gray-500 font-black">Spiritual Companion</p>
           </div>
         </div>
-        <button onClick={onClose} className="p-3 bg-white/5 rounded-full hover:bg-white/10 transition-colors">
+        <button 
+          onClick={onClose} 
+          className="p-3 bg-white/5 rounded-full hover:bg-white/10 transition-all active:scale-90"
+        >
           <Icons.Close />
         </button>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-10 custom-scrollbar pb-40 pt-10">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto p-4 md:p-12 space-y-8 md:space-y-12 custom-scrollbar pb-64 pt-6"
+      >
         {messages.length === 0 && (
-          <div className="h-full flex flex-col items-center justify-center text-center space-y-10 opacity-60">
-            <div className="p-10 border border-white/5 rounded-[3rem] bg-white/[0.02] max-w-sm shadow-inner">
-              <div className="flex justify-center mb-4 text-[#d4af37]">
+          <div className="h-full flex flex-col items-center justify-center text-center space-y-12 opacity-80 px-4">
+            <div className="p-10 md:p-14 border border-white/5 rounded-[3rem] md:rounded-[4rem] bg-white/[0.02] max-w-md shadow-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-b from-[#d4af37]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
+              <div className="flex justify-center mb-8 text-[#d4af37] animate-pulse">
                 <Icons.Feather />
               </div>
-              <p className="serif italic text-xl leading-relaxed text-gray-200">"I'm here to help you navigate the depth of our tradition. What would you like to explore today?"</p>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-3 max-w-lg">
-              {["Explain the Andimta", "Who is St. Yared?", "Church History", "Liturgical Cycles"].map((prompt, i) => (
-                <button 
-                  key={i}
-                  onClick={() => handleSendMessage(prompt)}
-                  className="px-6 py-3 bg-white/5 rounded-full text-[10px] uppercase tracking-[0.15em] border border-white/5 hover:border-[#d4af37]/40 hover:text-[#d4af37] transition-all"
-                >
-                  {prompt}
-                </button>
-              ))}
+              <p className="serif italic text-xl md:text-2xl leading-[1.6] text-gray-200">
+                "Speak or type your inquiry. I am here to help you navigate the depth of our tradition."
+              </p>
             </div>
           </div>
         )}
 
         {messages.map((msg, i) => (
-          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-5 duration-500`}>
-            <div className={`max-w-[85%] rounded-[2rem] p-7 shadow-2xl relative ${
+          <div 
+            key={i} 
+            className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in slide-in-from-bottom-4 duration-500`}
+          >
+            <div className={`${
               msg.role === 'user' 
-                ? 'bg-[#d4af37] text-black font-semibold' 
-                : 'bg-white/5 border border-white/10 text-gray-100 ethiopic text-xl leading-relaxed'
+                ? 'max-w-[85%] md:max-w-[75%] bg-[#d4af37] text-black font-bold rounded-t-[2rem] rounded-bl-[2rem] p-6 md:p-8 shadow-xl' 
+                : 'max-w-[90%] md:max-w-[80%] flex flex-col items-start'
             }`}>
-              {msg.attachment && (
-                <div className={`mb-4 p-3 rounded-xl flex items-center space-x-3 border ${msg.role === 'user' ? 'bg-black/10 border-black/10' : 'bg-black/40 border-white/10'}`}>
-                  <Icons.Book />
-                  <div className="text-xs font-bold truncate opacity-80">{msg.attachment.title}</div>
+              {msg.attachment && msg.role === 'user' && (
+                <div className="mb-4 p-3 rounded-xl flex items-center space-x-3 bg-black/10 border border-black/10">
+                  <div className="text-black/60">
+                    {msg.attachment.type === 'audio' ? <Icons.Mic /> : <Icons.Book />}
+                  </div>
+                  <div className="text-xs font-black truncate">{msg.attachment.title}</div>
                 </div>
               )}
-              <p>{msg.content}</p>
+              <div className={`${
+                msg.role === 'assistant' 
+                  ? 'bg-[#121214] border border-white/5 rounded-t-[3rem] rounded-br-[3rem] p-8 md:p-10 text-gray-100 ethiopic text-xl md:text-2xl leading-relaxed tracking-wide shadow-2xl relative overflow-hidden w-full'
+                  : 'whitespace-pre-wrap break-words text-lg md:text-xl'
+              }`}>
+                {msg.role === 'assistant' ? (
+                   <>
+                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-[#d4af37]/30 to-transparent" />
+                     {msg.content}
+                   </>
+                ) : msg.content}
+              </div>
             </div>
           </div>
         ))}
 
         {isTyping && (
           <div className="flex justify-start">
-            <div className="bg-white/5 border border-white/10 px-6 py-4 rounded-full flex items-center space-x-3 animate-pulse">
-              <span className="text-[10px] text-gray-500 uppercase tracking-widest">Searching the records</span>
-              <div className="flex space-x-1">
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" />
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce [animation-delay:0.2s]" />
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce [animation-delay:0.4s]" />
-              </div>
-            </div>
+             <div className="bg-[#121214]/50 border border-[#d4af37]/20 rounded-t-[3rem] rounded-br-[3rem] p-8 md:p-10 text-gray-400 ethiopic text-xl md:text-2xl leading-relaxed tracking-wide shadow-2xl w-full animate-pulse">
+                {streamingText || "Searching the sacred scrolls..."}
+             </div>
           </div>
         )}
       </div>
 
-      <div className="p-6 pb-12 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/90 to-transparent fixed bottom-0 left-0 w-full z-30">
-        <div className="max-w-3xl mx-auto">
+      <div className="p-4 md:p-10 pb-10 md:pb-14 bg-gradient-to-t from-[#0a0a0c] via-[#0a0a0c]/98 to-transparent fixed bottom-0 left-0 w-full z-30">
+        <div className="max-w-4xl mx-auto flex flex-col items-center">
           {selectedAttachment && (
-            <div className="mb-4 flex items-center justify-between p-4 bg-[#d4af37]/10 border border-[#d4af37]/30 rounded-2xl animate-in slide-in-from-bottom-4">
-              <div className="flex items-center space-x-3">
-                 <Icons.Book />
-                 <span className="text-xs font-bold text-[#d4af37]">{selectedAttachment.title}</span>
+            <div className="mb-4 w-full flex items-center justify-between p-4 bg-[#d4af37]/10 border border-[#d4af37]/30 rounded-2xl animate-in slide-in-from-bottom-4 backdrop-blur-md">
+              <div className="flex items-center space-x-4">
+                 <div className="text-[#d4af37]"><Icons.Book /></div>
+                 <span className="text-xs font-black text-[#d4af37] uppercase tracking-widest">{selectedAttachment.title}</span>
               </div>
-              <button onClick={() => setSelectedAttachment(null)} className="text-[#d4af37] hover:scale-110 transition-transform"><Icons.Close /></button>
+              <button onClick={() => setSelectedAttachment(null)} className="text-[#d4af37] p-1"><Icons.Close /></button>
             </div>
           )}
 
-          <div className="flex items-center space-x-4 bg-white/5 border border-white/10 rounded-[3rem] p-3 backdrop-blur-2xl shadow-2xl">
+          <div className="flex items-center space-x-3 md:space-x-4 bg-white/5 border border-white/10 rounded-[2.5rem] md:rounded-[3rem] p-2 md:p-3 backdrop-blur-3xl shadow-2xl w-full">
             <button 
               onClick={() => setShowAttachTray(!showAttachTray)}
-              className={`p-4 rounded-full transition-all ${showAttachTray ? 'bg-[#d4af37] text-black shadow-lg shadow-[#d4af37]/20' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+              className={`p-4 md:p-5 rounded-full transition-all ${showAttachTray ? 'bg-[#d4af37] text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
             >
               <Icons.Attach />
             </button>
             
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-0">
               {isRecording ? (
-                <div className="h-12 flex items-center justify-center space-x-2 px-4">
+                <div className="h-14 flex items-center space-x-2 px-4 w-full">
                   {voiceBars.map((h, i) => (
-                    <div key={i} className="w-1.5 bg-[#d4af37] rounded-full transition-all duration-100" style={{ height: `${h}%` }} />
+                    <div key={i} className="w-1.5 md:w-2 bg-[#d4af37] rounded-full transition-all duration-100" style={{ height: `${h}%` }} />
                   ))}
+                  <span className="text-[10px] text-[#d4af37] font-black uppercase tracking-widest ml-4">Listening...</span>
                 </div>
               ) : (
-                <input 
-                  type="text"
-                  placeholder="Ask a question..."
-                  className="w-full bg-transparent border-none focus:ring-0 text-white placeholder:text-gray-600 px-4 py-3 text-lg"
+                <textarea 
+                  ref={textareaRef}
+                  placeholder="Ask Memhir..."
+                  className="w-full min-h-[56px] max-h-32 bg-transparent border-none focus:ring-0 text-white placeholder:text-gray-600 px-2 md:px-4 py-3.5 text-lg md:text-xl ethiopic resize-none overflow-y-auto"
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSendMessage();
+                    }
+                  }}
+                  rows={1}
                 />
               )}
             </div>
 
-            <button 
-              onClick={isRecording ? () => setIsRecording(false) : startVoiceSim}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse shadow-lg' : 'bg-white/5 text-[#d4af37] hover:bg-white/10'}`}
-            >
-              <Icons.Mic />
-            </button>
-            
-            {!isRecording && (
+            <div className="flex items-center space-x-2">
               <button 
-                onClick={() => handleSendMessage()}
-                className="w-14 h-14 rounded-full bg-[#d4af37] text-black flex items-center justify-center shadow-xl shadow-[#d4af37]/20 hover:scale-105 active:scale-95 transition-all"
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
+                className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-white/5 text-[#d4af37] hover:bg-white/10'}`}
+                title="Hold to Record"
               >
-                <Icons.ChevronRight />
+                <Icons.Mic />
               </button>
-            )}
+              
+              {!isRecording && (
+                <button 
+                  onClick={() => handleSendMessage()}
+                  disabled={!inputValue.trim() && !selectedAttachment}
+                  className={`w-12 h-12 md:w-14 md:h-14 rounded-full flex items-center justify-center transition-all ${
+                    inputValue.trim() || selectedAttachment 
+                    ? 'bg-[#d4af37] text-black shadow-xl shadow-[#d4af37]/20' 
+                    : 'bg-white/5 text-gray-700'
+                  }`}
+                >
+                  <Icons.ChevronRight />
+                </button>
+              )}
+            </div>
           </div>
 
           {showAttachTray && (
-            <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-6 duration-300">
+            <div className="mt-4 grid grid-cols-2 gap-4 animate-in slide-in-from-bottom-6 duration-500 w-full">
               <button 
                 onClick={() => {
                   if (currentQuote) setSelectedAttachment({ type: 'quote', title: currentQuote.source });
                   setShowAttachTray(false);
                 }}
-                className="flex flex-col items-start p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 hover:border-[#d4af37]/30 group transition-all"
+                className="flex items-center space-x-4 p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10"
               >
-                <Icons.Cloud />
-                <div className="mt-3">
-                  <div className="text-[10px] font-bold text-[#d4af37] uppercase tracking-widest">Current Reading</div>
-                  <div className="text-xs text-gray-500 truncate mt-1">{currentQuote?.source || "Reference"}</div>
+                <div className="text-[#d4af37]"><Icons.Cloud /></div>
+                <div className="text-left">
+                  <div className="text-[9px] font-black text-[#d4af37] uppercase tracking-widest">Quote</div>
+                  <div className="text-[10px] text-gray-600 truncate">{currentQuote?.source || "Reflection"}</div>
                 </div>
               </button>
               
-              <div className="relative group overflow-hidden bg-white/5 border border-white/5 rounded-3xl hover:border-[#d4af37]/30 transition-all">
+              <div className="relative group bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 overflow-hidden">
                 <select 
                   className="w-full h-full opacity-0 absolute inset-0 cursor-pointer z-10"
                   onChange={(e) => {
@@ -231,14 +330,14 @@ const AskMemhir: React.FC<Props> = ({ onClose, currentQuote }) => {
                     setShowAttachTray(false);
                   }}
                 >
-                  <option value="">Choose Book...</option>
+                  <option value="">Select Book</option>
                   {books.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
-                <div className="flex flex-col items-start p-6 group-hover:bg-white/10 transition-all h-full">
-                  <Icons.Book />
-                  <div className="mt-3">
-                    <div className="text-[10px] font-bold text-[#d4af37] uppercase tracking-widest">Library</div>
-                    <div className="text-xs text-gray-500 truncate mt-1">Select a Scroll</div>
+                <div className="flex items-center space-x-4 p-4 h-full">
+                  <div className="text-[#d4af37]"><Icons.Book /></div>
+                  <div className="text-left">
+                    <div className="text-[9px] font-black text-[#d4af37] uppercase tracking-widest">Library</div>
+                    <div className="text-[10px] text-gray-600">Contextual Reference</div>
                   </div>
                 </div>
               </div>

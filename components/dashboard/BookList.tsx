@@ -54,7 +54,7 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
               <input 
                 type="text" 
                 placeholder="Find a Scroll..." 
-                className="w-full bg-white/5 border border-white/10 rounded-full px-3 py-1.5 text-[10px] focus:outline-none focus:border-[#d4af37]/50 text-white placeholder:text-gray-600"
+                className="w-full bg-white/5 border border-white/5 rounded-full px-4 py-2 text-[10px] focus:outline-none focus:border-[#d4af37]/30 text-white placeholder:text-gray-600 shadow-inner"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus={isSearchActive}
@@ -81,7 +81,7 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
           return (
             <div 
               key={book.id} 
-              className="bg-white/5 border border-white/10 p-5 md:p-6 rounded-[2rem] group hover:border-[#d4af37]/40 transition-all flex flex-col shadow-xl"
+              className="bg-white/5 border border-white/5 p-5 md:p-6 rounded-[2rem] group hover:border-[#d4af37]/40 transition-all flex flex-col shadow-xl"
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
@@ -107,13 +107,13 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
               <div className="mt-5 flex space-x-2">
                 <button 
                   onClick={() => onContinue(book.id)}
-                  className="flex-1 py-3 md:py-4 rounded-2xl bg-[#d4af37] text-black text-[10px] uppercase font-black tracking-widest hover:bg-[#c0a030] transition-all shadow-lg active:scale-95"
+                  className="flex-1 py-3 md:py-4 rounded-full bg-[#d4af37] text-black text-[10px] uppercase font-black tracking-widest hover:bg-[#c0a030] transition-all shadow-lg active:scale-95"
                 >
                   {completedCount > 0 ? 'Continue' : 'Start Reading'}
                 </button>
                 <button 
                   onClick={() => setSelectedBookForChapters(book)}
-                  className="px-4 py-3 md:py-4 rounded-2xl border border-white/5 text-gray-400 hover:text-[#d4af37] hover:bg-white/5 transition-all active:scale-95"
+                  className="px-4 py-3 md:py-4 rounded-full border border-white/5 text-gray-400 hover:text-[#d4af37] hover:bg-white/5 transition-all active:scale-95"
                 >
                   <Icons.Menu />
                 </button>
@@ -131,7 +131,7 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
 
       {selectedBookForChapters && (
         <div className="fixed inset-0 z-[110] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-6 animate-in fade-in duration-300">
-          <div className="bg-[#0e0e11] w-full max-w-xl rounded-[2.5rem] md:rounded-[3rem] border border-white/10 p-6 md:p-10 shadow-2xl relative overflow-hidden">
+          <div className="bg-[#0e0e11] w-full max-w-xl rounded-[2.5rem] md:rounded-[3rem] border border-white/5 p-6 md:p-10 shadow-2xl relative overflow-hidden">
             <div className="flex justify-between items-start mb-6 md:mb-10">
                <div>
                  <h3 className="serif text-2xl md:text-3xl text-[#d4af37] mb-1">{selectedBookForChapters.name}</h3>
