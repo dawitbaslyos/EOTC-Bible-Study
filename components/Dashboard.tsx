@@ -1,11 +1,10 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icons } from '../constants';
-import { useProgress } from '../hooks/useProgress';
 import Heatmap from './dashboard/Heatmap';
 import BookList from './dashboard/BookList';
 import LibraryDrawer from './LibraryDrawer';
-import { Book, Quote, FastingSeason, EthiopianHoliday } from '../types';
+import { Book, Quote, FastingSeason, EthiopianHoliday, UserStats } from '../types';
 import { getEthiopianDate, EthiopianDate } from '../utils/ethiopianCalendar';
 
 interface Props {
@@ -22,6 +21,9 @@ interface Props {
   onOpenSettings: () => void;
   isPremium?: boolean;
   onTogglePremium: () => void;
+  stats: UserStats;
+  getHeatmapData: (date: Date, fasting: FastingSeason[]) => any[];
+  daysPracticed: number;
 }
 
 const Dashboard: React.FC<Props> = ({ 
@@ -37,9 +39,11 @@ const Dashboard: React.FC<Props> = ({
   onOpenNotifications,
   onOpenSettings,
   isPremium,
-  onTogglePremium
+  onTogglePremium,
+  stats,
+  getHeatmapData,
+  daysPracticed
 }) => {
-  const { stats, getHeatmapData, daysPracticed } = useProgress();
   const [saints, setSaints] = useState<Record<string, string>>({});
   const [fastingSeasons, setFastingSeasons] = useState<FastingSeason[]>([]);
   const [holidays, setHolidays] = useState<EthiopianHoliday[]>([]);
@@ -47,7 +51,7 @@ const Dashboard: React.FC<Props> = ({
   const [showHolidayFirst, setShowHolidayFirst] = useState(true);
   
   const [heatmapViewDate, setHeatmapViewDate] = useState(new Date());
-  const heatmapData = getHeatmapData(heatmapViewDate, fastingSeasons); 
+  const heatmapData = useMemo(() => getHeatmapData(heatmapViewDate, fastingSeasons), [heatmapViewDate, fastingSeasons, stats.studyHistory]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -102,7 +106,6 @@ const Dashboard: React.FC<Props> = ({
           <button 
             onClick={onOpenNotifications}
             className="w-12 h-12 bg-[var(--card-bg)] border border-theme rounded-xl flex items-center justify-center text-[var(--text-secondary)] hover:text-[var(--gold)] transition-all relative"
-            aria-label="View notifications"
           >
             <Icons.Bell />
             {unreadCount > 0 && (
@@ -114,7 +117,6 @@ const Dashboard: React.FC<Props> = ({
           <button 
             onClick={onOpenMemhir}
             className="w-12 h-12 bg-[var(--gold-muted)] border border-[var(--gold)]/30 rounded-xl flex items-center justify-center text-[var(--gold)] shadow-sm hover:bg-[var(--gold)]/20 transition-all active:scale-90"
-            aria-label="Ask for guidance"
           >
             <Icons.Message />
           </button>
@@ -123,7 +125,6 @@ const Dashboard: React.FC<Props> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-1 space-y-8">
-          {/* Current Date & Saints Section */}
           <section className="bg-[var(--card-bg)] border border-theme p-8 rounded-[2.5rem] space-y-6 relative overflow-hidden group shadow-lg">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--gold)]/5 blur-3xl -mr-16 -mt-16 rounded-full opacity-50 group-hover:opacity-100 transition-opacity" />
             
@@ -147,23 +148,19 @@ const Dashboard: React.FC<Props> = ({
                    <div className="text-xs font-bold text-[var(--text-primary)] ethiopic truncate max-w-[140px]">
                      {todayHoliday && showHolidayFirst ? todayHoliday.name : (saintOfToday || 'Holy Saints')}
                    </div>
-                   {todayHoliday && (
-                     <div className="text-[7px] text-[var(--gold)] uppercase tracking-widest mt-1 opacity-60">Tap to toggle</div>
-                   )}
                  </div>
                )}
             </div>
 
             <button 
               onClick={() => onStart('wudase', true)}
-              className="w-full bg-[var(--gold)] text-black py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#c0a030] hover:scale-[1.02] transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-3 group"
+              className="w-full bg-[var(--gold)] text-black py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#c0a030] transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-3 group"
             >
               <span>Start Daily Routine</span>
               <Icons.ChevronRight className="group-hover:translate-x-1 transition-transform" />
             </button>
           </section>
 
-          {/* Routine / Heatmap Section */}
           <section className="bg-[var(--card-bg)] border border-theme p-8 rounded-[2.5rem] space-y-6 shadow-md">
             <div className="flex justify-between items-center px-1">
               <div className="flex items-center space-x-2 text-[var(--gold)]">
@@ -175,10 +172,8 @@ const Dashboard: React.FC<Props> = ({
                 <div 
                   className="flex items-baseline space-x-1 cursor-pointer hover:opacity-70 transition-opacity" 
                   onClick={resetToToday}
-                  title="Return to today"
                 >
                   <span className="text-sm font-bold text-[var(--gold)]">{heatmapViewDate.toLocaleString('default', { month: 'short' })}</span>
-                  <span className="text-[10px] text-[var(--text-muted)]">{heatmapViewDate.getFullYear()}</span>
                 </div>
                 <button onClick={() => changeHeatmapMonth(1)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><Icons.ChevronRight /></button>
               </div>
@@ -188,19 +183,22 @@ const Dashboard: React.FC<Props> = ({
             
             <div className="pt-2 flex justify-between items-end">
               <div className="flex flex-col">
-                <span className="text-3xl font-light text-[var(--text-primary)] leading-none">{stats.streak || 0}</span>
-                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Day Streak</span>
+                <span className="text-3xl font-light text-[var(--text-primary)] leading-none">
+                  {stats.streak || (daysPracticed > 0 ? 0 : '—')}
+                </span>
+                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">
+                  {stats.streak === 0 && daysPracticed > 0 ? 'Foundation Set' : 'Day Streak'}
+                </span>
               </div>
               <div className="text-right flex flex-col">
                 <span className="text-xl font-light text-[var(--text-primary)] leading-none">{daysPracticed}</span>
-                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Total Reflections</span>
+                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Reflections</span>
               </div>
             </div>
           </section>
 
           {quote && (
             <section className="p-8 border border-theme rounded-[2.5rem] bg-gradient-to-br from-[var(--card-bg)] to-transparent italic relative group shadow-sm">
-              <div className="absolute top-4 left-6 text-4xl text-[var(--gold)] opacity-20 serif">"</div>
               <p className="text-[var(--text-secondary)] text-sm leading-relaxed mb-4 relative z-10 px-2">{quote.text}</p>
               <div className="text-[9px] uppercase tracking-[0.2em] text-[var(--gold)] font-black text-right">— {quote.source}</div>
             </section>

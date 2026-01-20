@@ -55,11 +55,22 @@ export const useProgress = () => {
   };
 
   const updateLastAccessed = (bookId: string) => {
-    const newStats = { ...stats };
+    const newStats = { 
+      ...stats,
+      bookProgress: { ...stats.bookProgress }
+    };
+    
     if (!newStats.bookProgress[bookId]) {
-      newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
+      newStats.bookProgress[bookId] = { 
+        bookId, 
+        completedChapters: [], 
+        lastAccessed: Date.now() 
+      };
     } else {
-      newStats.bookProgress[bookId].lastAccessed = Date.now();
+      newStats.bookProgress[bookId] = {
+        ...newStats.bookProgress[bookId],
+        lastAccessed: Date.now()
+      };
     }
     saveStats(newStats);
   };
@@ -67,18 +78,28 @@ export const useProgress = () => {
   const completeChapter = (bookId: string, chapter: number) => {
     const today = new Date();
     const todayStr = getLocalDateString(today);
-    const newStats = { ...stats };
     
-    // Streak logic
+    const newStats: UserStats = { 
+      ...stats,
+      studyHistory: { ...stats.studyHistory },
+      bookProgress: { ...stats.bookProgress }
+    };
+    
+    // Streak logic refined: Starts incrementing on the NEXT day
     if (newStats.lastStudyDate !== todayStr) {
       const yesterday = new Date(today);
       yesterday.setDate(today.getDate() - 1);
       const yesterdayStr = getLocalDateString(yesterday);
       
-      if (newStats.lastStudyDate === yesterdayStr) {
+      if (!newStats.lastStudyDate) {
+        // First day ever
+        newStats.streak = 0; 
+      } else if (newStats.lastStudyDate === yesterdayStr) {
+        // Consecutive returning day
         newStats.streak += 1;
       } else {
-        newStats.streak = 1;
+        // Broke streak
+        newStats.streak = 0;
       }
       newStats.lastStudyDate = todayStr;
     }
@@ -87,14 +108,21 @@ export const useProgress = () => {
     newStats.totalSessions = (newStats.totalSessions || 0) + 1;
     
     if (bookId !== 'wudase') {
-      if (!newStats.bookProgress[bookId]) {
-        newStats.bookProgress[bookId] = { bookId, completedChapters: [], lastAccessed: Date.now() };
-      }
-      newStats.bookProgress[bookId].lastAccessed = Date.now();
-      if (!newStats.bookProgress[bookId].completedChapters.includes(chapter)) {
-        newStats.bookProgress[bookId].completedChapters.push(chapter);
-        newStats.bookProgress[bookId].completedChapters.sort((a, b) => a - b);
-      }
+      const currentBookProgress = newStats.bookProgress[bookId] || { 
+        bookId, 
+        completedChapters: [], 
+        lastAccessed: Date.now() 
+      };
+
+      const updatedChapters = currentBookProgress.completedChapters.includes(chapter)
+        ? currentBookProgress.completedChapters
+        : [...currentBookProgress.completedChapters, chapter].sort((a, b) => a - b);
+
+      newStats.bookProgress[bookId] = {
+        ...currentBookProgress,
+        completedChapters: updatedChapters,
+        lastAccessed: Date.now()
+      };
     }
 
     saveStats(newStats);
@@ -112,26 +140,23 @@ export const useProgress = () => {
     
     const year = targetDate.getFullYear();
     const month = targetDate.getMonth();
+    
     const firstDayOfMonth = new Date(year, month, 1);
     const lastDayOfMonth = new Date(year, month + 1, 0);
     
     let startDay = firstDayOfMonth.getDay();
-    // Assuming Monday start for heatmap
     let leadingDays = startDay === 0 ? 6 : startDay - 1;
 
     const findLiturgicalInfo = (date: Date) => {
       const ethDate = getEthiopianDate(date);
       const val = ethDate.month * 100 + ethDate.day;
-      
       const season = fastingSeasons.find(s => {
         const start = s.ethStartMonth * 100 + s.ethStartDay;
         const end = s.ethEndMonth * 100 + s.ethEndDay;
         if (start <= end) return val >= start && val <= end;
         return val >= start || val <= end;
       });
-
       const holiday = holidays.find(h => h.month === ethDate.month && h.day === ethDate.day);
-      
       return { 
         fastingColor: season?.color || null, 
         fastingName: season?.name || null,
@@ -140,42 +165,36 @@ export const useProgress = () => {
       };
     };
 
-    // Leading days
     for (let i = leadingDays; i > 0; i--) {
       const d = new Date(year, month, 1 - i);
       const dStr = getLocalDateString(d);
-      const lit = findLiturgicalInfo(d);
       data.push({ 
         count: stats.studyHistory[dStr] || 0, 
         isToday: dStr === todayStr, 
         isPadding: true, 
-        ...lit 
+        ...findLiturgicalInfo(d) 
       });
     }
 
-    // Days in current month
     for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
       const d = new Date(year, month, i);
       const dStr = getLocalDateString(d);
-      const lit = findLiturgicalInfo(d);
       data.push({ 
         count: stats.studyHistory[dStr] || 0, 
         isToday: dStr === todayStr, 
         isPadding: false, 
-        ...lit 
+        ...findLiturgicalInfo(d) 
       });
     }
 
-    // Trailing days
     while (data.length % 7 !== 0) {
       const d = new Date(year, month + 1, data.length - leadingDays - lastDayOfMonth.getDate() + 1);
       const dStr = getLocalDateString(d);
-      const lit = findLiturgicalInfo(d);
       data.push({ 
         count: stats.studyHistory[dStr] || 0, 
         isToday: dStr === todayStr, 
         isPadding: true, 
-        ...lit 
+        ...findLiturgicalInfo(d) 
       });
     }
 

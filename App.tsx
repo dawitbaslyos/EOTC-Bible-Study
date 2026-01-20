@@ -26,6 +26,10 @@ const App: React.FC = () => {
   const [showTransition, setShowTransition] = useState(false);
   const [isDailyWudase, setIsDailyWudase] = useState(false);
   
+  const [hasSeenOnboarding, setHasSeenOnboarding] = useState(() => 
+    localStorage.getItem('senay_onboarding_complete') === 'true'
+  );
+
   const [liturgy, setLiturgy] = useState<WudaseLiturgy | null>(null);
   const [bibleData, setBibleData] = useState<BibleBookJSON[] | null>(null);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
@@ -36,10 +40,9 @@ const App: React.FC = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('senay_theme') as Theme) || 'dark');
   
-  const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats } = useProgress();
+  const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress();
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
 
-  // Filtered books that only exist in BOTH the metadata and the content JSONs
   const availableBooks = useMemo(() => {
     if (!bibleData || !allBooks.length) return [];
     return allBooks.filter(book => 
@@ -55,50 +58,50 @@ const App: React.FC = () => {
   useEffect(() => {
     const savedUser = localStorage.getItem('senay_user');
     if (savedUser) {
-      const parsed = JSON.parse(savedUser);
-      setUser(parsed);
-      if (!stats.hasCompletedOnboarding) {
-        setPhase(AppPhase.ONBOARDING);
-      }
+      setUser(JSON.parse(savedUser));
     }
 
     const fetchData = async () => {
       try {
         const [litRes, bibleRes, quotesRes, booksRes] = await Promise.all([
-          fetch('./data/wudase-liturgy.json').catch(() => ({ ok: false, json: () => null })),
-          fetch('./data/bible-content.json').catch(() => ({ ok: false, json: () => null })),
-          fetch('./data/quotes.json').catch(() => ({ ok: false, json: () => null })),
-          fetch('./data/80-weahadu.json').catch(() => ({ ok: false, json: () => null }))
+          fetch('./data/wudase-liturgy.json'),
+          fetch('./data/bible-content.json'),
+          fetch('./data/quotes.json'),
+          fetch('./data/80-weahadu.json')
         ]);
 
-        if (litRes.ok) setLiturgy(await (litRes as any).json());
-        if (bibleRes.ok) setBibleData(await (bibleRes as any).json());
-        if (booksRes.ok) setAllBooks(await (booksRes as any).json());
-        
+        if (litRes.ok) setLiturgy(await litRes.json());
+        if (bibleRes.ok) setBibleData(await bibleRes.json());
+        if (booksRes.ok) setAllBooks(await booksRes.json());
         if (quotesRes.ok) {
-          const quotes = await (quotesRes as any).json();
+          const quotes = await quotesRes.json();
           if (Array.isArray(quotes) && quotes.length > 0) {
-            const index = new Date().getDate() % quotes.length;
-            setQuote(quotes[index]);
+            setQuote(quotes[new Date().getDate() % quotes.length]);
           }
         }
       } catch (err) {
-        console.error("Critical error loading data:", err);
+        console.error("Data loading error:", err);
       }
     };
 
     fetchData();
-  }, [stats.hasCompletedOnboarding]);
+  }, []);
+
+  const handleOnboardingComplete = () => {
+    setHasSeenOnboarding(true);
+    localStorage.setItem('senay_onboarding_complete', 'true');
+  };
 
   const handleLogin = (profile: UserProfile) => {
     setUser(profile);
     localStorage.setItem('senay_user', JSON.stringify(profile));
-    if (!stats.hasCompletedOnboarding) {
-      setPhase(AppPhase.ONBOARDING);
-    } else {
-      setPhase(AppPhase.DASHBOARD);
-      notify({ title: "Peace be with you", body: `Welcome back, ${profile.name.split(' ')[0]}.`, type: 'emotional', priority: 'normal' });
-    }
+    setPhase(AppPhase.DASHBOARD);
+    notify({ 
+      title: "Peace be with you", 
+      body: `Welcome to your sanctuary, ${profile.name.split(' ')[0]}.`, 
+      type: 'emotional', 
+      priority: 'normal' 
+    });
   };
 
   const handleLogout = () => {
@@ -122,56 +125,36 @@ const App: React.FC = () => {
     const todayName = days[new Date().getDay()];
     const portion = lit.portions[todayName];
 
-    if (chapter === 1) {
-      return {
-        title: "Standard Prayers",
-        bookId: 'wudase',
-        bookName: 'ውዳሴ ማርያም',
-        chapter: 1,
-        totalChapters: 2,
-        sections: lit.yezewetir.sections,
-        liturgicalSeason: todayName
-      };
-    } else {
-      return {
-        title: portion?.dayName || `${todayName} Portion`,
-        bookId: 'wudase',
-        bookName: 'ውዳሴ ማርያም',
-        chapter: 2,
-        totalChapters: 2,
-        sections: portion?.sections || [],
-        liturgicalSeason: todayName
-      };
-    }
+    return {
+      title: chapter === 1 ? "Standard Prayers" : (portion?.dayName || `${todayName} Portion`),
+      bookId: 'wudase',
+      bookName: 'ውዳሴ ማርያም',
+      chapter: chapter,
+      totalChapters: 2,
+      sections: chapter === 1 ? lit.yezewetir.sections : (portion?.sections || []),
+      liturgicalSeason: todayName
+    };
   };
 
   const startFlow = (bookId: string, isWudase: boolean, specificChapter?: number) => {
     setIsDailyWudase(isWudase);
-    if (isWudase) {
-      if (liturgy) {
-        const chapterNum = specificChapter || 1;
-        setReadingData(getWudasePortion(liturgy, chapterNum));
-        if (chapterNum === 1) {
-          goToPhase(AppPhase.PREPARATION);
-        } else {
-          goToPhase(AppPhase.READING);
-        }
-      }
+    if (isWudase && liturgy) {
+      const ch = specificChapter || 1;
+      setReadingData(getWudasePortion(liturgy, ch));
+      goToPhase(ch === 1 ? AppPhase.PREPARATION : AppPhase.READING);
     } else if (bibleData) {
       updateLastAccessed(bookId);
       const bookObj = bibleData.find(b => b.book_short_name_en.toLowerCase() === bookId.toLowerCase());
-      
       if (bookObj) {
-        const chapterNum = specificChapter || getNextChapter(bookId);
-        const chapterObj = bookObj.chapters.find(c => c.chapter === chapterNum) || bookObj.chapters[0];
-        
+        const ch = specificChapter || getNextChapter(bookId);
+        const chObj = bookObj.chapters.find(c => c.chapter === ch) || bookObj.chapters[0];
         setReadingData({
           title: bookObj.book_name_en,
           bookId: bookId,
           bookName: bookObj.book_name_am,
-          chapter: chapterObj.chapter,
+          chapter: chObj.chapter,
           totalChapters: bookObj.chapters.length,
-          sections: chapterObj.sections,
+          sections: chObj.sections,
           liturgicalSeason: 'General'
         });
         goToPhase(AppPhase.READING);
@@ -179,53 +162,28 @@ const App: React.FC = () => {
     }
   };
 
-  const handleTogglePremium = () => {
-    const newVal = !stats.isPremium;
-    const newStats: UserStats = { ...stats, isPremium: newVal };
-    saveStats(newStats);
-    if (newVal) {
-      notify({ title: "Premium Activated", body: "Thank you for supporting Senay. You are now a Patron.", type: 'success', priority: 'high' });
-    }
-  };
-
-  const handleUpdateRituals = (prefs: RitualTime[]) => {
-    saveStats({ ...stats, preferredRituals: prefs });
-  };
-
-  const handleNextInReading = () => {
-    if (isDailyWudase && readingData) {
-      if (readingData.chapter === 1) {
-        startFlow('wudase', true, 2);
-      } else {
-        goToPhase(AppPhase.SUMMARY);
-      }
-    } else {
-      handleFinishReading();
-    }
-  };
-
   const handleFinishReading = () => {
-    if (readingData && readingData.bookId !== 'wudase') {
+    if (readingData) {
       completeChapter(readingData.bookId, readingData.chapter);
-    } else if (readingData && readingData.bookId === 'wudase') {
-      completeChapter('wudase', 1);
     }
     goToPhase(AppPhase.DASHBOARD);
   };
 
+  // 1. First Priority: Onboarding
+  if (!hasSeenOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
+
+  // 2. Second Priority: Login
   if (!user) {
     return <LoginPage onLogin={handleLogin} />;
   }
 
-  const renderPhase = () => {
-    switch (phase) {
-      case AppPhase.ONBOARDING:
-        return <Onboarding onComplete={(prefs) => {
-          saveStats({ ...stats, hasCompletedOnboarding: true, preferredRituals: prefs });
-          goToPhase(AppPhase.DASHBOARD);
-        }} />;
-      case AppPhase.DASHBOARD:
-        return (
+  // 3. Final: Main App
+  return (
+    <div className={`min-h-screen bg-[var(--bg-primary)] transition-opacity duration-500 ${showTransition ? 'opacity-0' : 'opacity-100'}`}>
+      <div className="max-w-5xl mx-auto min-h-screen flex flex-col relative">
+        {phase === AppPhase.DASHBOARD && (
           <Dashboard 
             onStart={startFlow} 
             quote={quote || undefined} 
@@ -239,66 +197,55 @@ const App: React.FC = () => {
             onOpenNotifications={() => setIsNotificationOpen(true)}
             onOpenSettings={() => goToPhase(AppPhase.SETTINGS)}
             isPremium={stats.isPremium}
-            onTogglePremium={handleTogglePremium}
+            onTogglePremium={() => saveStats({ ...stats, isPremium: !stats.isPremium })}
+            stats={stats}
+            getHeatmapData={getHeatmapData}
+            daysPracticed={daysPracticed}
           />
-        );
-      case AppPhase.SETTINGS:
-        return (
+        )}
+
+        {phase === AppPhase.SETTINGS && (
           <SettingsPage 
             onClose={() => goToPhase(AppPhase.DASHBOARD)}
             theme={theme}
             setTheme={setTheme}
             rituals={stats.preferredRituals || ['day']}
-            setRituals={handleUpdateRituals}
+            setRituals={(r) => saveStats({ ...stats, preferredRituals: r })}
             isPremium={stats.isPremium}
-            onTogglePremium={handleTogglePremium}
+            onTogglePremium={() => saveStats({ ...stats, isPremium: !stats.isPremium })}
             onLogout={handleLogout}
           />
-        );
-      case AppPhase.ASK_MEMHIR:
-        return <AskMemhir onClose={() => goToPhase(AppPhase.DASHBOARD)} currentQuote={quote || undefined} theme={theme} />;
-      case AppPhase.PREPARATION:
-        return (
+        )}
+
+        {phase === AppPhase.ASK_MEMHIR && <AskMemhir onClose={() => goToPhase(AppPhase.DASHBOARD)} currentQuote={quote || undefined} theme={theme} />}
+
+        {phase === AppPhase.PREPARATION && (
           <PreparationPhase 
             openingText={liturgy?.opening || "In the name of the Father..."} 
             yezewetirText="" 
             onComplete={() => goToPhase(AppPhase.READING)} 
           />
-        );
-      case AppPhase.READING:
-        return (
+        )}
+
+        {phase === AppPhase.READING && readingData && (
           <ReadingPhase 
-            data={readingData!} 
+            data={readingData} 
             isDailyManna={isDailyWudase}
-            onNext={handleNextInReading} 
+            onNext={() => isDailyWudase && readingData.chapter === 1 ? startFlow('wudase', true, 2) : (isDailyWudase ? goToPhase(AppPhase.SUMMARY) : handleFinishReading())} 
             onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)}
             onFinish={() => goToPhase(AppPhase.DASHBOARD)}
-            onSelectChapter={(chapter) => startFlow(readingData!.bookId, false, chapter)}
+            onSelectChapter={(chapter) => startFlow(readingData.bookId, false, chapter)}
           />
-        );
-      case AppPhase.SUMMARY:
-        return (
+        )}
+
+        {phase === AppPhase.SUMMARY && (
           <SummaryPhase 
             wudaseAmlakText={liturgy?.wudaseAmlak || "Praises of the Almighty..."}
             onFinish={handleFinishReading}
           />
-        );
-      default:
-        return null;
-    }
-  };
+        )}
 
-  return (
-    <div className={`min-h-screen bg-[var(--bg-primary)] transition-opacity duration-500 ${showTransition ? 'opacity-0' : 'opacity-100'}`}>
-      <div className="max-w-5xl mx-auto min-h-screen flex flex-col relative">
-        {renderPhase()}
-        <NotificationCenter 
-          isOpen={isNotificationOpen} 
-          notifications={notifications} 
-          onClose={() => setIsNotificationOpen(false)} 
-          onMarkRead={markAsRead}
-          onClearAll={clearAll}
-        />
+        <NotificationCenter isOpen={isNotificationOpen} notifications={notifications} onClose={() => setIsNotificationOpen(false)} onMarkRead={markAsRead} onClearAll={clearAll} />
         <NotificationToast notification={activeToast} onDismiss={dismissToast} />
       </div>
     </div>

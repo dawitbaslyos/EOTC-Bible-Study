@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Book, UserStats } from '../../types';
 import { Icons } from '../../constants';
@@ -70,7 +71,8 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
         {displayedBooks.map((book) => {
           const progress = userStats.bookProgress[book.id];
           const completedCount = progress ? progress.completedChapters.length : 0;
-          const pct = Math.floor((completedCount / book.totalChapters) * 100);
+          const totalChaps = book.totalChapters || 1;
+          const pct = Math.min(100, Math.floor((completedCount / totalChaps) * 100));
 
           return (
             <div 
@@ -82,13 +84,13 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
                   <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest mb-1">{book.category}</div>
                   <h4 className="text-base md:text-lg serif text-[var(--text-primary)] group-hover:text-[var(--gold)] transition-colors leading-tight">{book.name}</h4>
                 </div>
-                <div className="text-[var(--gold)] text-sm font-bold ml-2">{pct}%</div>
+                <div className="text-[var(--gold)] text-xs font-black ml-2 tabular-nums">{pct}%</div>
               </div>
               
               <div className="flex-1">
-                <div className="h-1 w-full bg-[var(--bg-primary)] rounded-full overflow-hidden mb-2">
+                <div className="h-1.5 w-full bg-[var(--bg-primary)] rounded-full overflow-hidden mb-2 shadow-inner">
                   <div 
-                    className="h-full bg-[var(--gold)] rounded-full transition-all duration-1000" 
+                    className={`h-full bg-[var(--gold)] rounded-full transition-all duration-1000 ease-out ${pct === 100 ? 'gold-glow' : ''}`}
                     style={{ width: `${pct}%` }}
                   />
                 </div>
@@ -97,9 +99,13 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
               <div className="mt-5 flex space-x-2">
                 <button 
                   onClick={() => onContinue(book.id)}
-                  className="flex-1 py-3 rounded-full bg-[var(--gold)] text-black text-[10px] uppercase font-black tracking-widest hover:bg-[#c0a030] transition-all shadow-md active:scale-95"
+                  className={`flex-1 py-3 rounded-full text-[10px] uppercase font-black tracking-widest transition-all shadow-md active:scale-95 ${
+                    pct === 100 
+                    ? 'bg-[var(--gold-muted)] border border-[var(--gold)]/20 text-[var(--gold)]'
+                    : 'bg-[var(--gold)] text-black hover:bg-[#c0a030]'
+                  }`}
                 >
-                  {completedCount > 0 ? 'Continue' : 'Start'}
+                  {pct === 100 ? 'Revisit' : (completedCount > 0 ? 'Continue' : 'Start Journey')}
                 </button>
                 <button 
                   onClick={() => setSelectedBookForChapters(book)}
