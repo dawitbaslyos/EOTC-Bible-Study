@@ -80,7 +80,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
 
   return (
     <div 
-      className="flex-1 flex flex-col bg-[var(--bg-secondary)] text-[var(--text-primary)] animate-in fade-in duration-700 relative min-h-screen"
+      className="flex-1 flex flex-col bg-[var(--bg-secondary)] text-[var(--text-primary)] relative min-h-screen"
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >

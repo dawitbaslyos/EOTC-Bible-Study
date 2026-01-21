@@ -111,7 +111,12 @@ const App: React.FC = () => {
     setIsDrawerOpen(false);
   };
 
-  const goToPhase = (newPhase: AppPhase) => {
+  const goToPhase = (newPhase: AppPhase, instant: boolean = false) => {
+    if (instant) {
+      setPhase(newPhase);
+      window.scrollTo({ top: 0, behavior: 'auto' });
+      return;
+    }
     setShowTransition(true);
     setTimeout(() => {
       setPhase(newPhase);
@@ -137,11 +142,13 @@ const App: React.FC = () => {
   };
 
   const startFlow = (bookId: string, isWudase: boolean, specificChapter?: number) => {
+    const isInstant = phase === AppPhase.READING;
     setIsDailyWudase(isWudase);
+    
     if (isWudase && liturgy) {
       const ch = specificChapter || 1;
       setReadingData(getWudasePortion(liturgy, ch));
-      goToPhase(ch === 1 ? AppPhase.PREPARATION : AppPhase.READING);
+      goToPhase(ch === 1 ? AppPhase.PREPARATION : AppPhase.READING, isInstant);
     } else if (bibleData) {
       updateLastAccessed(bookId);
       const bookObj = bibleData.find(b => b.book_short_name_en.toLowerCase() === bookId.toLowerCase());
@@ -157,7 +164,7 @@ const App: React.FC = () => {
           sections: chObj.sections,
           liturgicalSeason: 'General'
         });
-        goToPhase(AppPhase.READING);
+        goToPhase(AppPhase.READING, isInstant);
       }
     }
   };
