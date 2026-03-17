@@ -6,6 +6,7 @@ import BookList from './dashboard/BookList';
 import LibraryDrawer from './LibraryDrawer';
 import { Book, Quote, FastingSeason, EthiopianHoliday, UserStats } from '../types';
 import { getEthiopianDate, EthiopianDate } from '../utils/ethiopianCalendar';
+import { buildWidgetSnapshot, persistWidgetSnapshot } from '../utils/widgetSnapshot';
 
 interface Props {
   onStart: (bookId: string, isDailyWudase: boolean, chapter?: number) => void;
@@ -84,6 +85,16 @@ const Dashboard: React.FC<Props> = ({
   };
 
   const hasSaintOrHoliday = !!todayHoliday || !!saintOfToday;
+
+  // Keep a simple snapshot of calendar data for native widget use
+  useEffect(() => {
+    const snapshot = buildWidgetSnapshot(ethDate, {
+      todayHolidayName: todayHoliday ? todayHoliday.name : null,
+      saintOfToday: saintOfToday || null,
+      heatmapData,
+    });
+    persistWidgetSnapshot(snapshot);
+  }, [ethDate, todayHoliday, saintOfToday, heatmapData]);
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-8 space-y-8 animate-in fade-in duration-1000">
