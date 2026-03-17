@@ -19,8 +19,6 @@ interface Props {
   unreadCount: number;
   onOpenNotifications: () => void;
   onOpenSettings: () => void;
-  isPremium?: boolean;
-  onTogglePremium: () => void;
   stats: UserStats;
   getHeatmapData: (date: Date, fasting: FastingSeason[]) => any[];
   daysPracticed: number;
@@ -38,8 +36,6 @@ const Dashboard: React.FC<Props> = ({
   unreadCount,
   onOpenNotifications,
   onOpenSettings,
-  isPremium,
-  onTogglePremium,
   stats,
   getHeatmapData,
   daysPracticed
@@ -156,7 +152,7 @@ const Dashboard: React.FC<Props> = ({
               onClick={() => onStart('wudase', true)}
               className="w-full bg-[var(--gold)] text-black py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#c0a030] transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-3 group"
             >
-              <span>Start Daily Routine</span>
+              <span>Daily Reading</span>
               <Icons.ChevronRight className="group-hover:translate-x-1 transition-transform" />
             </button>
           </section>
@@ -165,7 +161,7 @@ const Dashboard: React.FC<Props> = ({
             <div className="flex justify-between items-center px-1">
               <div className="flex items-center space-x-2 text-[var(--gold)]">
                 <Icons.Lotus />
-                <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">Routine</h3>
+                <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">My Routine</h3>
               </div>
               <div className="flex items-center space-x-3">
                 <button onClick={() => changeHeatmapMonth(-1)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><Icons.ChevronRight className="rotate-180" /></button>
@@ -192,7 +188,7 @@ const Dashboard: React.FC<Props> = ({
               </div>
               <div className="text-right flex flex-col">
                 <span className="text-xl font-light text-[var(--text-primary)] leading-none">{daysPracticed}</span>
-                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Reflections</span>
+                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Insights</span>
               </div>
             </div>
           </section>
@@ -218,8 +214,6 @@ const Dashboard: React.FC<Props> = ({
         onLogout={onLogout}
         daysPracticed={daysPracticed}
         onOpenSettings={onOpenSettings}
-        isPremium={isPremium}
-        onTogglePremium={onTogglePremium}
       />
     </div>
   );

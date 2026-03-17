@@ -13,19 +13,16 @@ interface Props {
   onLogout: () => void;
   daysPracticed?: number;
   onOpenSettings: () => void;
-  isPremium?: boolean;
-  onTogglePremium: () => void;
 }
 
 const LibraryDrawer: React.FC<Props> = ({ 
   isOpen, onClose, books, onSelectBook, userProfile, userStats, onLogout, daysPracticed,
-  onOpenSettings, isPremium, onTogglePremium
+  onOpenSettings
 }) => {
   const [activeTab, setActiveTab] = useState<Testament>('All');
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false);
   
   const drawerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef(0);
@@ -60,11 +57,6 @@ const LibraryDrawer: React.FC<Props> = ({
   const totalReflections = (Object.values(userStats?.studyHistory || {}) as number[]).reduce((a, b) => a + b, 0);
   const activeScrolls = (Object.values(userStats?.bookProgress || {}) as BookProgress[]).filter(p => p.completedChapters.length > 0).length;
 
-  const handleSubscribe = () => {
-    setShowPurchaseConfirm(false);
-    onTogglePremium();
-  };
-  
   return (
     <>
       <div 
@@ -97,20 +89,6 @@ const LibraryDrawer: React.FC<Props> = ({
                
                <div className="flex-1">
                   <h3 className="serif text-xl text-[var(--text-primary)] truncate">{userProfile?.name || 'Seer'}</h3>
-                  {isPremium ? (
-                    <div className="inline-flex items-center space-x-1 mt-1 px-3 py-1 bg-[var(--gold)] text-black rounded-full shadow-lg">
-                      <Icons.Lotus className="w-3 h-3" />
-                      <span className="text-[8px] uppercase tracking-tighter font-black">Premium Patron</span>
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => setShowPurchaseConfirm(true)}
-                      className="flex items-center space-x-1.5 mt-1 px-3 py-1 bg-[var(--gold-muted)] border border-[var(--gold)]/20 rounded-full hover:bg-[var(--gold)]/20 transition-all group"
-                    >
-                      <span className="w-1.5 h-1.5 bg-[var(--gold)] rounded-full animate-pulse" />
-                      <span className="text-[9px] uppercase tracking-widest font-black text-[var(--gold)] group-hover:underline">Go Premium</span>
-                    </button>
-                  )}
                </div>
 
                <button 
@@ -174,40 +152,6 @@ const LibraryDrawer: React.FC<Props> = ({
           </div>
         </div>
       </div>
-
-      {/* Subscription Confirmation Modal */}
-      {showPurchaseConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowPurchaseConfirm(false)} />
-          <div className="relative w-full max-w-xs bg-[var(--bg-primary)] border border-theme rounded-[2.5rem] p-8 text-center space-y-6 shadow-2xl overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-1 bg-[var(--gold)]" />
-            <div className="w-16 h-16 bg-[var(--gold-muted)] rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Icons.Lotus className="text-[var(--gold)] w-8 h-8" />
-            </div>
-            <div className="space-y-2">
-              <h3 className="serif text-2xl text-[var(--text-primary)]">Unlock Premium</h3>
-              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                Support the Senay mission and access exclusive insights for just <span className="text-[var(--gold)] font-bold">$4.99 per year</span>.
-              </p>
-            </div>
-            <div className="flex flex-col space-y-3 pt-4">
-              <button 
-                onClick={handleSubscribe} 
-                className="w-full bg-[var(--gold)] text-black font-black py-4 rounded-full text-[10px] uppercase tracking-widest shadow-lg hover:bg-[#c0a030] transition-all"
-              >
-                Subscribe Now
-              </button>
-              <button 
-                onClick={() => setShowPurchaseConfirm(false)} 
-                className="w-full bg-[var(--card-bg)] text-[var(--text-muted)] font-bold py-4 rounded-full text-[10px] uppercase tracking-widest border border-theme hover:bg-white/5 transition-colors"
-              >
-                Not Today
-              </button>
-            </div>
-            <p className="text-[8px] text-[var(--text-muted)] uppercase tracking-widest opacity-40">Billed annually • Cancel anytime</p>
-          </div>
-        </div>
-      )}
     </>
   );
 };

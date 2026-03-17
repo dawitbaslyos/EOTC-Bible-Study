@@ -41,14 +41,14 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
       <div className="flex items-center justify-between mb-2 px-1">
          <div className="flex items-center space-x-2 text-[var(--gold)]">
            <Icons.Book />
-           <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">Spiritual Library</h3>
+           <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">Bible Library</h3>
          </div>
          
          <div className="flex items-center space-x-2 md:space-x-3">
             <div className={`flex items-center transition-all duration-300 ${isSearchActive ? 'w-32 sm:w-48 opacity-100' : 'w-0 opacity-0 overflow-hidden'}`}>
               <input 
                 type="text" 
-                placeholder="Find a Scroll..." 
+                placeholder="Find a book..." 
                 className="w-full bg-[var(--card-bg)] border border-theme rounded-full px-4 py-2 text-[10px] focus:outline-none focus:border-[var(--gold)]/30 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] shadow-inner"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -105,7 +105,7 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
                     : 'bg-[var(--gold)] text-black hover:bg-[#c0a030]'
                   }`}
                 >
-                  {pct === 100 ? 'Revisit' : (completedCount > 0 ? 'Continue' : 'Start Journey')}
+                  {pct === 100 ? 'Revisit' : (completedCount > 0 ? 'Continue' : 'Start')}
                 </button>
                 <button 
                   onClick={() => setSelectedBookForChapters(book)}
@@ -124,13 +124,13 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
             className="w-full py-8 border-2 border-dashed border-theme rounded-[2rem] text-[var(--text-muted)] hover:text-[var(--gold)] hover:border-[var(--gold)]/20 transition-all group flex flex-col items-center justify-center space-y-2"
           >
             <Icons.Library className="w-8 h-8 opacity-40 group-hover:opacity-100 transition-opacity" />
-            <span className="text-[10px] uppercase font-black tracking-[0.3em]">Discover More Scrolls</span>
+            <span className="text-[10px] uppercase font-black tracking-[0.3em]">Browse Library</span>
           </button>
         )}
 
         {filteredAndSortedBooks.length === 0 && (
           <div className="py-20 text-center opacity-30 text-xs uppercase tracking-[0.2em]">
-            No scrolls found in this library
+            No books found
           </div>
         )}
       </div>
@@ -141,7 +141,7 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
             <div className="flex justify-between items-start mb-6">
                <div>
                  <h3 className="serif text-2xl text-[var(--gold)] mb-1">{selectedBookForChapters.name}</h3>
-                 <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest">Select Chapter Scroll</p>
+                 <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-widest">Select Chapter</p>
                </div>
                <button onClick={() => setSelectedBookForChapters(null)} className="p-3 bg-[var(--card-bg)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
                  <Icons.Close />

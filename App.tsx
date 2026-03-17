@@ -87,9 +87,15 @@ const App: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = (rituals: RitualTime[]) => {
     setHasSeenOnboarding(true);
     localStorage.setItem('senay_onboarding_complete', 'true');
+    // Save chosen rituals to user stats
+    saveStats({
+      ...stats,
+      preferredRituals: rituals,
+      hasCompletedOnboarding: true
+    });
   };
 
   const handleLogin = (profile: UserProfile) => {
@@ -203,8 +209,6 @@ const App: React.FC = () => {
             unreadCount={unreadCount}
             onOpenNotifications={() => setIsNotificationOpen(true)}
             onOpenSettings={() => goToPhase(AppPhase.SETTINGS)}
-            isPremium={stats.isPremium}
-            onTogglePremium={() => saveStats({ ...stats, isPremium: !stats.isPremium })}
             stats={stats}
             getHeatmapData={getHeatmapData}
             daysPracticed={daysPracticed}
@@ -218,8 +222,6 @@ const App: React.FC = () => {
             setTheme={setTheme}
             rituals={stats.preferredRituals || ['day']}
             setRituals={(r) => saveStats({ ...stats, preferredRituals: r })}
-            isPremium={stats.isPremium}
-            onTogglePremium={() => saveStats({ ...stats, isPremium: !stats.isPremium })}
             onLogout={handleLogout}
           />
         )}

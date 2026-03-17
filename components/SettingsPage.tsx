@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Icons } from '../constants';
 import { Theme, RitualTime } from '../types';
@@ -8,16 +9,13 @@ interface Props {
   setTheme: (theme: Theme) => void;
   rituals: RitualTime[];
   setRituals: (rituals: RitualTime[]) => void;
-  isPremium?: boolean;
-  onTogglePremium: () => void;
   onLogout: () => void;
 }
 
 const SettingsPage: React.FC<Props> = ({ 
-  onClose, theme, setTheme, rituals, setRituals, isPremium, onTogglePremium, onLogout 
+  onClose, theme, setTheme, rituals, setRituals, onLogout 
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showPurchaseConfirm, setShowPurchaseConfirm] = useState(false);
 
   const toggleRitual = (r: RitualTime) => {
     if (rituals.includes(r)) {
@@ -27,11 +25,6 @@ const SettingsPage: React.FC<Props> = ({
     } else {
       setRituals([...rituals, r]);
     }
-  };
-
-  const handlePurchase = () => {
-    setShowPurchaseConfirm(false);
-    onTogglePremium();
   };
 
   return (
@@ -107,42 +100,6 @@ const SettingsPage: React.FC<Props> = ({
           </div>
         </section>
 
-        {/* Subscription Section */}
-        <section className="space-y-6">
-          <div className="flex items-center space-x-3 text-[var(--gold)]">
-            <Icons.Heart className="w-5 h-5" />
-            <h3 className="uppercase text-xs font-black tracking-[0.2em]">Subscription</h3>
-          </div>
-          <div className="p-8 bg-[var(--gold-muted)] border border-[var(--gold)]/20 rounded-3xl text-center space-y-4">
-            {isPremium ? (
-              <>
-                <div className="w-16 h-16 bg-[var(--gold)] rounded-2xl flex items-center justify-center mx-auto shadow-xl">
-                  <Icons.Lotus className="w-8 h-8 text-black" />
-                </div>
-                <h4 className="serif text-xl">Premium Active</h4>
-                <p className="text-xs text-[var(--text-secondary)]">Thank you for supporting this project. Blessings be upon you.</p>
-                <button 
-                  onClick={onTogglePremium}
-                  className="text-[9px] uppercase tracking-widest text-[var(--text-muted)] hover:text-red-500 transition-colors mt-4"
-                >
-                  Cancel Subscription
-                </button>
-              </>
-            ) : (
-              <>
-                <h4 className="serif text-xl">Upgrade to Premium</h4>
-                <p className="text-xs text-[var(--text-secondary)]">Unlock advanced insights and support the mission of understanding.</p>
-                <button 
-                  onClick={() => setShowPurchaseConfirm(true)}
-                  className="w-full bg-[var(--gold)] text-black font-black py-4 rounded-full uppercase tracking-widest text-xs shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
-                >
-                  Subscribe for $4.99 / Year
-                </button>
-              </>
-            )}
-          </div>
-        </section>
-
         {/* Account Section */}
         <section className="pt-10 border-t border-theme">
           <button 
@@ -154,21 +111,6 @@ const SettingsPage: React.FC<Props> = ({
           </button>
         </section>
       </div>
-
-      {/* Subscription Confirmation Popup */}
-      {showPurchaseConfirm && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 animate-in fade-in">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setShowPurchaseConfirm(false)} />
-          <div className="relative w-full max-w-xs bg-[var(--bg-primary)] border border-theme rounded-[2.5rem] p-8 text-center space-y-6 shadow-2xl">
-            <h3 className="serif text-2xl text-[var(--text-primary)]">Unlock Premium?</h3>
-            <p className="text-xs text-[var(--text-muted)]">This will activate all premium features for $4.99 per year. Do you wish to proceed?</p>
-            <div className="flex flex-col space-y-3">
-              <button onClick={handlePurchase} className="w-full bg-[var(--gold)] text-black font-black py-4 rounded-full text-[10px] uppercase tracking-widest shadow-lg">Confirm & Subscribe</button>
-              <button onClick={() => setShowPurchaseConfirm(false)} className="w-full bg-[var(--card-bg)] text-[var(--text-muted)] font-bold py-4 rounded-full text-[10px] uppercase tracking-widest border border-theme">Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Logout Confirmation Popup */}
       {showLogoutConfirm && (

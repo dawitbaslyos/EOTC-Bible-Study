@@ -38,13 +38,13 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
       
       <div className="z-10 w-full max-w-md space-y-12 animate-in fade-in zoom-in duration-1000">
         <div className="flex flex-col items-center text-center space-y-6">
-          <div className="w-24 h-24 bg-[var(--card-bg)] border border-theme rounded-[2.5rem] flex items-center justify-center text-[var(--gold)] shadow-2xl relative group overflow-hidden">
+          <div className="w-24 h-24 bg-[var(--card-bg)] border border-theme rounded-[2.5rem] flex items-center justify-center shadow-2xl relative group overflow-hidden">
             <div className="absolute inset-0 bg-[var(--gold)]/5 animate-pulse" />
-            <Icons.Lotus className="w-12 h-12" />
+            <Icons.Logo className="w-16 h-16 object-contain" />
           </div>
           
           <div className="space-y-2">
-            <h1 className="text-5xl serif gold-glow tracking-[0.2em] text-[var(--gold)] font-bold">SENAY</h1>
+            <h1 className="text-5xl serif gold-glow text-[var(--gold)] font-bold tracking-[0.2em]">SENAY</h1>
             <p className="text-[10px] uppercase tracking-[0.4em] text-[var(--text-muted)] font-bold">The Way of Understanding</p>
           </div>
         </div>
