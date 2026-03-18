@@ -172,7 +172,6 @@ const Dashboard: React.FC<Props> = ({
           <section className="bg-[var(--card-bg)] border border-theme p-8 rounded-[2.5rem] space-y-6 shadow-md">
             <div className="flex justify-between items-center px-1">
               <div className="flex items-center space-x-2 text-[var(--gold)]">
-                <Icons.Lotus />
                 <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">My Routine</h3>
               </div>
               <div className="flex items-center space-x-3">

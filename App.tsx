@@ -86,8 +86,40 @@ const App: React.FC = () => {
         ]);
 
         if (litRes.ok) setLiturgy(await litRes.json());
-        if (bibleRes.ok) setBibleData(await bibleRes.json());
-        if (booksRes.ok) setAllBooks(await booksRes.json());
+
+        const bibleJson: BibleBookJSON[] | null = bibleRes.ok ? await bibleRes.json() : null;
+        const weahaduJson: Book[] | null = booksRes.ok ? await booksRes.json() : null;
+
+        if (bibleJson) {
+          setBibleData(bibleJson);
+
+          const weahaduById = new Map<string, Book>();
+          if (weahaduJson) {
+            for (const b of weahaduJson) {
+              weahaduById.set(b.id.toLowerCase(), b);
+            }
+          }
+
+          // Source of truth for which books exist is `bible-content.json` (should be 81).
+          // `80-weahadu.json` is used only for metadata like display names/category.
+          const mergedBooks: Book[] = bibleJson.map((b) => {
+            const shortId = b.book_short_name_en.toLowerCase();
+            const meta = weahaduById.get(shortId);
+
+            return {
+              id: shortId,
+              name: meta?.name || `${b.book_name_am} (${b.book_name_en})`,
+              category: (meta?.category || 'Law') as Book['category'],
+              totalChapters: meta?.totalChapters ?? b.chapters.length,
+              testament: meta?.testament || b.testament,
+            };
+          });
+
+          setAllBooks(mergedBooks);
+        } else if (weahaduJson) {
+          // Fallback: if bible content fails to load, show weahadu books.
+          setAllBooks(weahaduJson);
+        }
         if (quotesRes.ok) {
           const quotes = await quotesRes.json();
           if (Array.isArray(quotes) && quotes.length > 0) {

@@ -2,7 +2,7 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
+    android:layout_height="match_parent"
     android:orientation="vertical"
     android:padding="8dp"
     android:background="@drawable/widget_background">
@@ -39,7 +39,7 @@
         android:text=""
         android:textColor="#888888"
         android:textSize="9sp"
-        android:visibility="gone" />
+        />
 
     <TextView
         android:id="@+id/widget_streak"
@@ -48,63 +48,7 @@
         android:text=""
         android:textColor="#D4AF37"
         android:textSize="9sp"
-        android:visibility="gone" />
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:orientation="horizontal"
-        android:visibility="gone">
-
-        <ImageView
-            android:id="@+id/widget_bar_1"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_2"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_3"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_4"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_5"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_6"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-
-        <ImageView
-            android:id="@+id/widget_bar_7"
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
-            android:background="#222222" />
-    </LinearLayout>
+        android:layout_marginTop="6dp" />
 
 </LinearLayout>
 
