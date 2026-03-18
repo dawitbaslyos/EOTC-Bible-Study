@@ -1,6 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Icons } from '../constants';
+import { auth } from '../firebaseClient';
+import {
+  FacebookAuthProvider,
+  GoogleAuthProvider,
+  getRedirectResult,
+  onAuthStateChanged,
+  signInWithRedirect
+} from 'firebase/auth';
 
 interface Props {
   onLogin: (profile: any) => void;
@@ -8,27 +16,80 @@ interface Props {
 
 const LoginPage: React.FC<Props> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const didEnterRef = useRef(false);
 
-  const simulateLogin = (provider: 'google' | 'facebook' | 'guest') => {
-    setIsLoading(provider);
+  // If the user just returned from a redirect-based OAuth flow,
+  // finalize the login and enter the app.
+  useEffect(() => {
+    didEnterRef.current = false;
+
+    const providerFromUser = (user: any): 'google' | 'facebook' => {
+      const providerId = user?.providerData?.[0]?.providerId;
+      return providerId === 'facebook.com' ? 'facebook' : 'google';
+    };
+
+    const maybeLogin = (user: any) => {
+      if (!user) return;
+      if (didEnterRef.current) return;
+      didEnterRef.current = true;
+
+      onLogin({
+        name: user.displayName || 'Senay User',
+        email: user.email || '',
+        photoURL: user.photoURL || '',
+        provider: providerFromUser(user)
+      });
+    };
+
+    // 1) If we just came back from an OAuth redirect, finalize it.
+    getRedirectResult(auth)
+      .then((result) => {
+        maybeLogin(result?.user);
+      })
+      .catch((err) => {
+        console.error('OAuth redirect result failed:', err);
+      });
+
+    // 2) Also handle the case where Firebase is already signed-in but
+    // getRedirectResult returns null on reload.
+    const unsub = onAuthStateChanged(auth, (user) => {
+      maybeLogin(user);
+    });
+
+    return () => unsub();
+  }, [onLogin]);
+
+  const simulateGuestLogin = () => {
+    setIsLoading('guest');
     setTimeout(() => {
-      if (provider === 'guest') {
-        onLogin({
-          name: 'Faithful Seeker',
-          email: 'guest@senay.local',
-          photoURL: '',
-          provider: 'guest'
-        });
-      } else {
-        onLogin({
-          name: provider === 'google' ? 'Yared Tesfaye' : 'Selamawit Kassa',
-          email: provider === 'google' ? 'yared.t@example.com' : 'selam.k@example.com',
-          photoURL: '', 
-          provider
-        });
-      }
+      onLogin({
+        name: 'Faithful Seeker',
+        email: 'guest@senay.local',
+        photoURL: '',
+        provider: 'guest'
+      });
       setIsLoading(null);
-    }, 1500);
+    }, 600);
+  };
+
+  const handleOAuthLogin = async (providerType: 'google' | 'facebook') => {
+    setIsLoading(providerType);
+    try {
+      const provider =
+        providerType === 'google'
+          ? new GoogleAuthProvider()
+          : new FacebookAuthProvider();
+
+      // Redirect-based OAuth is more mobile compatible than popups.
+      await signInWithRedirect(auth, provider);
+    } catch (err: any) {
+      // Keep UI usable; user can try again.
+      console.error('OAuth login failed:', err);
+      setIsLoading(null);
+    } finally {
+      // On success we navigate away via redirect, so this is mainly for error cases.
+      setIsLoading(null);
+    }
   };
 
   return (
@@ -57,7 +118,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
 
           <div className="space-y-4">
             <button 
-              onClick={() => simulateLogin('google')}
+              onClick={() => handleOAuthLogin('google')}
               disabled={!!isLoading}
               className="w-full flex items-center justify-center space-x-4 bg-[var(--text-primary)] text-[var(--bg-primary)] py-4 rounded-full font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
             >
@@ -72,7 +133,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             </button>
 
             <button 
-              onClick={() => simulateLogin('facebook')}
+              onClick={() => handleOAuthLogin('facebook')}
               disabled={!!isLoading}
               className="w-full flex items-center justify-center space-x-4 bg-[#1877F2] text-white py-4 rounded-full font-bold transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50"
             >
@@ -88,7 +149,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             
             <div className="pt-2">
               <button 
-                onClick={() => simulateLogin('guest')}
+                onClick={() => simulateGuestLogin()}
                 disabled={!!isLoading}
                 className="w-full py-4 rounded-full border border-theme text-[var(--text-muted)] hover:text-[var(--gold)] hover:border-[var(--gold)]/30 transition-all text-sm font-bold active:scale-95 flex items-center justify-center space-x-2"
               >

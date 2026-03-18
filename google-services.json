@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1082609416678",
+    "project_id": "senay-8f8de",
+    "storage_bucket": "senay-8f8de.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1082609416678:android:59553a44eca7a292e7fe27",
+        "android_client_info": {
+          "package_name": "com.msrq.senay"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1082609416678-1e3dmrq9k1pmh2dbl3cfrp8v34pakrrq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCWXiQ0M3BG2deM2cfP4KgS6D9KsDVNw44"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1082609416678-1e3dmrq9k1pmh2dbl3cfrp8v34pakrrq.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
