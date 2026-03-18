@@ -15,6 +15,10 @@
         android:text="Meskerem 1"
         android:textColor="#D4AF37"
         android:textSize="14sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="10sp"
+        android:autoSizeMaxTextSize="16sp"
+        android:autoSizeStepGranularity="1sp"
         android:textStyle="bold"
         android:maxLines="1"
         android:ellipsize="end" />
@@ -27,6 +31,10 @@
         android:text="Three Saints"
         android:textColor="#FFFFFF"
         android:textSize="10sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="8sp"
+        android:autoSizeMaxTextSize="12sp"
+        android:autoSizeStepGranularity="1sp"
         android:layout_marginTop="2dp"
         android:maxLines="1"
         android:ellipsize="end" />
@@ -39,6 +47,10 @@
         android:text=""
         android:textColor="#888888"
         android:textSize="9sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="7sp"
+        android:autoSizeMaxTextSize="10sp"
+        android:autoSizeStepGranularity="1sp"
         />
 
     <TextView
@@ -48,6 +60,10 @@
         android:text=""
         android:textColor="#D4AF37"
         android:textSize="9sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="7sp"
+        android:autoSizeMaxTextSize="10sp"
+        android:autoSizeStepGranularity="1sp"
         android:layout_marginTop="6dp" />
 
 </LinearLayout>

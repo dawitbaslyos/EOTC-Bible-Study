@@ -12,13 +12,14 @@ import SettingsPage from './components/SettingsPage';
 import NotificationCenter, { NotificationToast } from './components/NotificationCenter';
 import { useProgress } from './hooks/useProgress';
 import { useNotifications } from './hooks/useNotifications';
-import { sendWelcomeNotification } from './utils/nativeNotifications';
+import { sendWelcomeNotification, schedulePrayerTimeReminders } from './utils/nativeNotifications';
 
 interface UserProfile {
   name: string;
   email: string;
   photoURL: string;
   provider: 'google' | 'facebook' | 'guest';
+  uid: string;
 }
 
 const App: React.FC = () => {
@@ -41,7 +42,8 @@ const App: React.FC = () => {
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('senay_theme') as Theme) || 'dark');
   
-  const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress();
+  const cloudUid = user?.provider === 'guest' ? null : (user?.uid || null);
+  const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
 
   const availableBooks = useMemo(() => {
@@ -159,7 +161,28 @@ const App: React.FC = () => {
     sendWelcomeNotification(profile.name.split(' ')[0]).catch(() => {
       // native notifications might not be available; fail silently
     });
+
+    schedulePrayerTimeReminders()
+      .then((ok) => {
+        if (ok) localStorage.setItem('senay_prayer_reminders_scheduled', 'true');
+      })
+      .catch(() => {});
   };
+
+  // Also ensure prayer reminders are scheduled when the app loads with a saved user.
+  useEffect(() => {
+    if (!user) return;
+    if (user.provider === 'guest') return;
+
+    const already = localStorage.getItem('senay_prayer_reminders_scheduled') === 'true';
+    if (already) return;
+
+    schedulePrayerTimeReminders()
+      .then((ok) => {
+        if (ok) localStorage.setItem('senay_prayer_reminders_scheduled', 'true');
+      })
+      .catch(() => {});
+  }, [user?.uid, user?.provider]);
 
   const handleLogout = () => {
     setUser(null);

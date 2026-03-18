@@ -1,7 +1,9 @@
 
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { UserStats, BookProgress, FastingSeason, EthiopianHoliday } from '../types';
 import { getEthiopianDate } from '../utils/ethiopianCalendar';
+import { db } from '../firestoreClient';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const STORAGE_KEY = 'senay_user_stats';
 
@@ -20,19 +22,25 @@ export const getLocalDateString = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-export const useProgress = () => {
+export const useProgress = (cloudUid?: string | null) => {
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [holidays, setHolidays] = useState<EthiopianHoliday[]>([]);
+  const [localReady, setLocalReady] = useState(false);
+  const [cloudHydrated, setCloudHydrated] = useState(false);
+  const lastCloudUidRef = useRef<string | null>(null);
+  const queuedSyncDayRef = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       try {
-        setStats(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        setStats(parsed);
       } catch (e) {
         console.error("Failed to parse saved stats", e);
       }
     }
+    setLocalReady(true);
 
     const loadHolidays = async () => {
       try {
@@ -48,6 +56,85 @@ export const useProgress = () => {
     
     loadHolidays();
   }, []);
+
+  // Cloud → local: on login, load user progress from Firestore (so user always resumes)
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      if (!cloudUid) {
+        setCloudHydrated(false);
+        lastCloudUidRef.current = null;
+        return;
+      }
+      if (!localReady) return;
+
+      // If the user uid changed, hydrate again.
+      if (lastCloudUidRef.current !== cloudUid) {
+        lastCloudUidRef.current = cloudUid;
+        setCloudHydrated(false);
+      }
+
+      const userDoc = doc(db, 'user_stats', cloudUid);
+      try {
+        const snap = await getDoc(userDoc);
+        if (cancelled) return;
+
+        if (snap.exists()) {
+          const cloudData = snap.data();
+          const cloudStats = (cloudData?.stats || cloudData) as UserStats;
+          setStats(cloudStats);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudStats));
+          setCloudHydrated(true);
+          return;
+        }
+
+        // If no cloud doc exists yet, create one from local stats.
+        await setDoc(userDoc, { stats });
+        if (cancelled) return;
+        setCloudHydrated(true);
+      } catch (err) {
+        console.error('Cloud stats hydrate failed:', err);
+        if (!cancelled) setCloudHydrated(true); // keep app usable even if offline
+      }
+    };
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [cloudUid, localReady]);
+
+  const maybeSyncToCloudOncePerDay = async (nextStats: UserStats) => {
+    if (!cloudUid) return;
+    if (!localReady || !cloudHydrated) return;
+
+    const todayStr = getLocalDateString(new Date());
+    const syncKey = `senay_last_cloud_sync_${cloudUid}`;
+    const lastSync = localStorage.getItem(syncKey);
+
+    // Avoid multiple writes for the same day (even if user completes multiple chapters)
+    if (lastSync === todayStr) return;
+    if (queuedSyncDayRef.current === todayStr) return;
+
+    queuedSyncDayRef.current = todayStr;
+    try {
+      const userDoc = doc(db, 'user_stats', cloudUid);
+      await setDoc(userDoc, { stats: nextStats });
+      localStorage.setItem(syncKey, todayStr);
+    } catch (err) {
+      console.error('Cloud daily sync failed:', err);
+      // allow retry later the same day
+      queuedSyncDayRef.current = null;
+    }
+  };
+
+  // Cloud sync on app open as well: if user opens the app and the daily sync
+  // hasn't happened yet, we persist current local progress.
+  useEffect(() => {
+    if (!cloudUid) return;
+    if (!localReady || !cloudHydrated) return;
+    maybeSyncToCloudOncePerDay(stats).catch(() => {});
+  }, [cloudUid, localReady, cloudHydrated, stats]);
 
   const saveStats = (newStats: UserStats) => {
     setStats(newStats);
@@ -126,6 +213,8 @@ export const useProgress = () => {
     }
 
     saveStats(newStats);
+    // Sync once per day: this is where streak + book progress actually changes.
+    maybeSyncToCloudOncePerDay(newStats).catch(() => {});
   };
 
   const getNextChapter = (bookId: string): number => {

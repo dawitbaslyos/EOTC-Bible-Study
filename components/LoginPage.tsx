@@ -37,6 +37,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
         name: user.displayName || 'Senay User',
         email: user.email || '',
         photoURL: user.photoURL || '',
+        uid: user.uid || '',
         provider: providerFromUser(user)
       });
     };
@@ -66,6 +67,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
         name: 'Faithful Seeker',
         email: 'guest@senay.local',
         photoURL: '',
+        uid: '',
         provider: 'guest'
       });
       setIsLoading(null);

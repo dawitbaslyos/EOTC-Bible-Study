@@ -15,6 +15,10 @@
         android:text="Meskerem 1"
         android:textColor="#D4AF37"
         android:textSize="18sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="14sp"
+        android:autoSizeMaxTextSize="22sp"
+        android:autoSizeStepGranularity="1sp"
         android:textStyle="bold"
         android:maxLines="1"
         android:ellipsize="end" />
@@ -27,6 +31,10 @@
         android:text="Three Saints"
         android:textColor="#FFFFFF"
         android:textSize="12sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="9sp"
+        android:autoSizeMaxTextSize="14sp"
+        android:autoSizeStepGranularity="1sp"
         android:layout_marginTop="4dp"
         android:maxLines="1"
         android:ellipsize="end" />
@@ -39,6 +47,10 @@
         android:text="Year of St. John"
         android:textColor="#888888"
         android:textSize="11sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="8sp"
+        android:autoSizeMaxTextSize="12sp"
+        android:autoSizeStepGranularity="1sp"
         android:layout_marginTop="2dp" />
 
     <!-- Streak -->
@@ -49,6 +61,10 @@
         android:text=""
         android:textColor="#D4AF37"
         android:textSize="11sp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="8sp"
+        android:autoSizeMaxTextSize="12sp"
+        android:autoSizeStepGranularity="1sp"
         android:layout_marginTop="4dp" />
 
 </LinearLayout>
