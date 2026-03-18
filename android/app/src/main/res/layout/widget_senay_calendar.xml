@@ -4,8 +4,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="12dp"
-    android:background="#111111">
+    android:padding="10dp"
+    android:background="@drawable/widget_background">
 
     <TextView
         android:id="@+id/widget_date"
@@ -14,7 +14,9 @@
         android:text="Meskerem 1"
         android:textColor="#D4AF37"
         android:textSize="16sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:maxLines="1"
+        android:ellipsize="end" />
 
     <TextView
         android:id="@+id/widget_year"

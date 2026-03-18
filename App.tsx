@@ -12,6 +12,7 @@ import SettingsPage from './components/SettingsPage';
 import NotificationCenter, { NotificationToast } from './components/NotificationCenter';
 import { useProgress } from './hooks/useProgress';
 import { useNotifications } from './hooks/useNotifications';
+import { sendWelcomeNotification } from './utils/nativeNotifications';
 
 interface UserProfile {
   name: string;
@@ -45,9 +46,23 @@ const App: React.FC = () => {
 
   const availableBooks = useMemo(() => {
     if (!bibleData || !allBooks.length) return [];
-    return allBooks.filter(book => 
-      bibleData.some(bd => bd.book_short_name_en.toLowerCase() === book.id.toLowerCase())
+
+    const bibleIds = new Set(
+      bibleData
+        .map(bd => bd.book_short_name_en?.toLowerCase?.())
+        .filter(Boolean)
     );
+
+    const matched = allBooks.filter(book =>
+      book.id ? bibleIds.has(book.id.toLowerCase()) : true
+    );
+
+    // If matching is too strict and hides many books, fall back to all
+    if (matched.length === 0 || matched.length < allBooks.length * 0.5) {
+      return allBooks;
+    }
+
+    return matched;
   }, [bibleData, allBooks]);
 
   useEffect(() => {
@@ -107,6 +122,10 @@ const App: React.FC = () => {
       body: `Welcome to your sanctuary, ${profile.name.split(' ')[0]}.`, 
       type: 'emotional', 
       priority: 'normal' 
+    });
+
+    sendWelcomeNotification(profile.name.split(' ')[0]).catch(() => {
+      // native notifications might not be available; fail silently
     });
   };
 

@@ -29,7 +29,7 @@ export const Icons = {
   ),
   Lotus: (props: any) => (
     <img
-      src="/Splash.png"
+      src="/data/Splash.png"
       alt="Senay Logo"
       {...props}
       style={{
@@ -41,7 +41,7 @@ export const Icons = {
   ),
   Logo: (props: any) => (
     <img
-      src="/Splash.png"
+      src="/data/Splash.png"
       alt="Senay Logo"
       {...props}
       style={{

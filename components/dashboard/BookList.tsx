@@ -18,17 +18,30 @@ const BookList: React.FC<Props> = ({ books, userStats, onContinue }) => {
   const filteredAndSortedBooks = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     
+    // Sort by recency, then name
     let result = [...books].sort((a, b) => {
       const aAccess = userStats.bookProgress[a.id]?.lastAccessed || 0;
       const bAccess = userStats.bookProgress[b.id]?.lastAccessed || 0;
       if (aAccess !== bAccess) return bAccess - aAccess;
       return a.name.localeCompare(b.name);
-    }).filter(b => {
+    });
+
+    // Apply search filter
+    const filtered = result.filter(b => {
       if (!q) return true;
       return b.name.toLowerCase().includes(q) || b.category.toLowerCase().includes(q);
     });
 
-    return result;
+    // Ensure each book appears only once, even if data has duplicates
+    const seen = new Set<string>();
+    const unique: typeof filtered = [];
+    for (const book of filtered) {
+      if (seen.has(book.id)) continue;
+      seen.add(book.id);
+      unique.push(book);
+    }
+
+    return unique;
   }, [books, userStats.bookProgress, searchQuery]);
 
   const displayedBooks = useMemo(() => {

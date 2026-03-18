@@ -120,6 +120,47 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
         </div>
       </header>
 
+      {/* Horizontal chapter selector tray under header */}
+      {!isDailyManna && showChapterTray && (
+        <div className="bg-[var(--bg-secondary)]/95 border-b border-theme/60">
+          <div className="px-3 md:px-6 py-3 flex items-center justify-between">
+            <span className="text-[9px] uppercase tracking-[0.18em] text-[var(--text-muted)]">
+              Select Chapter
+            </span>
+            <button
+              onClick={() => setShowChapterTray(false)}
+              className="text-[10px] uppercase tracking-[0.18em] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            >
+              Close
+            </button>
+          </div>
+          <div className="px-3 md:px-6 pb-3 overflow-x-auto custom-scrollbar">
+            <div className="flex space-x-2 md:space-x-3">
+              {Array.from({ length: data.totalChapters }).map((_, idx) => {
+                const num = idx + 1;
+                const isActive = num === data.chapter;
+                return (
+                  <button
+                    key={num}
+                    onClick={() => {
+                      onSelectChapter(num);
+                      setShowChapterTray(false);
+                    }}
+                    className={`px-3 md:px-4 py-1.5 md:py-2 rounded-full text-[10px] md:text-[11px] font-bold uppercase tracking-[0.18em] whitespace-nowrap transition-all ${
+                      isActive
+                        ? 'bg-[var(--gold)] text-black shadow-md'
+                        : 'bg-[var(--card-bg)] text-[var(--text-muted)] border border-theme hover:text-[var(--gold)]'
+                    }`}
+                  >
+                    Ch. {num}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
       <main ref={mainRef} className="flex-1 p-6 md:p-16 space-y-12 max-w-2xl mx-auto pb-48">
         {data.sections.map((section, sIdx) => (
           <div key={sIdx} className="space-y-12">
