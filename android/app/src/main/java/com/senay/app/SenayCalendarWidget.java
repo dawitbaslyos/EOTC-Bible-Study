@@ -23,8 +23,9 @@ import org.json.JSONObject;
  */
 public class SenayCalendarWidget extends AppWidgetProvider {
 
-    private static final String PREFS_NAME = "senay_widget_prefs";
-    private static final String KEY_SNAPSHOT = "senay_widget_snapshot";
+    // Use Capacitor's default storage so we don't need a custom plugin
+    private static final String PREFS_NAME = "CapacitorStorage";
+    private static final String KEY_SNAPSHOT = "widget_snapshot";
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
@@ -40,6 +41,7 @@ public class SenayCalendarWidget extends AppWidgetProvider {
             String dateLabel = "Ethiopian Calendar";
             String yearLabel = "";
             String saintOrHoliday = "";
+            int streak = 0;
             int[] intensities = new int[0];
 
             if (snapshotJson != null) {
@@ -48,6 +50,7 @@ public class SenayCalendarWidget extends AppWidgetProvider {
                     dateLabel = obj.optString("dateLabel", dateLabel);
                     yearLabel = obj.optString("yearLabel", yearLabel);
                     saintOrHoliday = obj.optString("saintOrHoliday", "");
+                    streak = obj.optInt("streak", 0);
 
                     JSONArray arr = obj.optJSONArray("monthHeatmap");
                     if (arr != null) {
@@ -64,6 +67,9 @@ public class SenayCalendarWidget extends AppWidgetProvider {
             views.setTextViewText(R.id.widget_date, dateLabel);
             views.setTextViewText(R.id.widget_year, yearLabel);
             views.setTextViewText(R.id.widget_saint, saintOrHoliday);
+
+            String streakText = streak > 0 ? "\uD83D\uDD6F " + streak + " days" : "";
+            views.setTextViewText(R.id.widget_streak, streakText);
 
             // Simple visualization: map first 7 intensity values to small blocks
             int[] barIds = {

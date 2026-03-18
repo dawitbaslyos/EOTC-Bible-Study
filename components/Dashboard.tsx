@@ -92,9 +92,10 @@ const Dashboard: React.FC<Props> = ({
       todayHolidayName: todayHoliday ? todayHoliday.name : null,
       saintOfToday: saintOfToday || null,
       heatmapData,
+      streak: stats.streak || 0,
     });
     persistWidgetSnapshot(snapshot);
-  }, [ethDate, todayHoliday, saintOfToday, heatmapData]);
+  }, [ethDate, todayHoliday, saintOfToday, heatmapData, stats.streak]);
 
   return (
     <div className="flex-1 flex flex-col p-4 md:p-8 space-y-8 animate-in fade-in duration-1000">
