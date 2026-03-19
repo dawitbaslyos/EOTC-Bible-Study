@@ -1,0 +1,164 @@
+package com.senay.app;
+
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.provider.Settings;
+import android.text.TextUtils;
+
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+
+import org.json.JSONArray;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@CapacitorPlugin(name = "AppLock")
+public class AppLockPlugin extends Plugin {
+
+    @PluginMethod
+    public void getState(PluginCall call) {
+        Context ctx = getContext();
+        JSObject ret = new JSObject();
+        ret.put("enabled", AppLockPrefs.isEnabled(ctx));
+        ret.put("mode", AppLockPrefs.getMode(ctx));
+        ret.put("packages", jsonFromSet(AppLockPrefs.getLockedPackages(ctx)));
+        ret.put("hasUnlockToken", AppLockPrefs.hasUnlockToken(ctx));
+        ret.put("accessibilityServiceEnabled", isAccessibilityServiceEnabled(ctx));
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void setEnabled(PluginCall call) {
+        Boolean enabled = call.getBoolean("enabled", false);
+        AppLockPrefs.setEnabled(getContext(), enabled);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setMode(PluginCall call) {
+        String mode = call.getString("mode", "paragraph");
+        AppLockPrefs.setMode(getContext(), mode);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void setLockedPackages(PluginCall call) {
+        JSArray arr = call.getArray("packages", new JSArray());
+        Set<String> set = new HashSet<>();
+        if (arr != null) {
+            for (int i = 0; i < arr.length(); i++) {
+                try {
+                    String p = arr.getString(i);
+                    if (!TextUtils.isEmpty(p)) {
+                        set.add(p);
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        AppLockPrefs.setLockedPackages(getContext(), set);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void reportReadingComplete(PluginCall call) {
+        String level = call.getString("level", "paragraph");
+        AppLockPrefs.grantUnlockFromReading(getContext(), level);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void openAccessibilitySettings(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(intent);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void getLauncherApps(PluginCall call) {
+        Context ctx = getContext();
+        PackageManager pm = ctx.getPackageManager();
+        Intent main = new Intent(Intent.ACTION_MAIN, null);
+        main.addCategory(Intent.CATEGORY_LAUNCHER);
+
+        List<ResolveInfo> infos = pm.queryIntentActivities(main, PackageManager.MATCH_ALL);
+        List<JSObject> out = new ArrayList<>();
+
+        String self = ctx.getPackageName();
+        for (ResolveInfo ri : infos) {
+            if (ri.activityInfo == null) continue;
+            String pkg = ri.activityInfo.packageName;
+            if (self.equals(pkg)) continue;
+
+            CharSequence label = ri.loadLabel(pm);
+            JSObject row = new JSObject();
+            row.put("packageName", pkg);
+            row.put("label", label != null ? label.toString() : pkg);
+            out.add(row);
+        }
+
+        Collections.sort(out, Comparator.comparing(o -> o.optString("label", "")));
+
+        JSONArray jarr = new JSONArray();
+        for (JSObject row : out) {
+            jarr.put(row);
+        }
+        JSObject ret = new JSObject();
+        ret.put("apps", jarr);
+        call.resolve(ret);
+    }
+
+    private static JSONArray jsonFromSet(Set<String> set) {
+        JSONArray arr = new JSONArray();
+        for (String s : set) {
+            arr.put(s);
+        }
+        return arr;
+    }
+
+    private static boolean isAccessibilityServiceEnabled(Context ctx) {
+        int accessibilityEnabled = 0;
+        try {
+            accessibilityEnabled = Settings.Secure.getInt(
+                    ctx.getContentResolver(),
+                    Settings.Secure.ACCESSIBILITY_ENABLED);
+        } catch (Settings.SettingNotFoundException e) {
+            return false;
+        }
+
+        if (accessibilityEnabled != 1) return false;
+
+        String setting = Settings.Secure.getString(
+                ctx.getContentResolver(),
+                Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (setting == null) return false;
+        TextUtils.SimpleStringSplitter splitter = new TextUtils.SimpleStringSplitter(':');
+        splitter.setString(setting);
+        String pkg = ctx.getPackageName();
+        String className = ReadingGateAccessibilityService.class.getName();
+        while (splitter.hasNext()) {
+            String next = splitter.next();
+            if (next == null) continue;
+            ComponentName cn = ComponentName.unflattenFromString(next);
+            if (cn != null
+                    && pkg.equals(cn.getPackageName())
+                    && className.equals(cn.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+}

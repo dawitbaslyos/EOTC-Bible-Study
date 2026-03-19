@@ -4,4 +4,14 @@
     <string name="title_activity_main">Senay: Bible Study</string>
     <string name="package_name">com.senay.app</string>
     <string name="custom_url_scheme">com.senay.app</string>
+
+    <string name="read_gate_service_label">Senay Focus Lock</string>
+    <string name="read_gate_accessibility_desc">Senay can briefly show a screen over apps you choose until you complete your reading in Senay. Turn this on only if you use Focus Lock in Settings.</string>
+
+    <string name="app_lock_overlay_title">Pause — read first</string>
+    <string name="app_lock_overlay_title_fmt">%1$s is paused</string>
+    <string name="app_lock_overlay_message_fmt">Open Senay and read before continuing. Required: %1$s.</string>
+    <string name="app_lock_open_senay">Open Senay</string>
+    <string name="app_lock_mode_paragraph_hint">scroll to the end of the current reading screen (paragraph)</string>
+    <string name="app_lock_mode_chapter_hint">finish a full chapter (or daily Wudase summary)</string>
 </resources>

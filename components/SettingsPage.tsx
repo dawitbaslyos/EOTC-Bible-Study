@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { Icons } from '../constants';
 import { Theme, RitualTime } from '../types';
+import { AppLockSettings } from './AppLockSettings';
 
 interface Props {
   onClose: () => void;
@@ -10,10 +11,11 @@ interface Props {
   rituals: RitualTime[];
   setRituals: (rituals: RitualTime[]) => void;
   onLogout: () => void;
+  onAppLockChange?: () => void;
 }
 
 const SettingsPage: React.FC<Props> = ({ 
-  onClose, theme, setTheme, rituals, setRituals, onLogout 
+  onClose, theme, setTheme, rituals, setRituals, onLogout, onAppLockChange
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -99,6 +101,8 @@ const SettingsPage: React.FC<Props> = ({
             })}
           </div>
         </section>
+
+        <AppLockSettings onChange={onAppLockChange} />
 
         {/* Account Section */}
         <section className="pt-10 border-t border-theme">
