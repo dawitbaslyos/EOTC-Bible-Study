@@ -11,11 +11,10 @@ interface Props {
   rituals: RitualTime[];
   setRituals: (rituals: RitualTime[]) => void;
   onLogout: () => void;
-  onAppLockChange?: () => void;
 }
 
 const SettingsPage: React.FC<Props> = ({ 
-  onClose, theme, setTheme, rituals, setRituals, onLogout, onAppLockChange
+  onClose, theme, setTheme, rituals, setRituals, onLogout
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -102,7 +101,7 @@ const SettingsPage: React.FC<Props> = ({
           </div>
         </section>
 
-        <AppLockSettings onChange={onAppLockChange} />
+        <AppLockSettings />
 
         {/* Account Section */}
         <section className="pt-10 border-t border-theme">

@@ -34,7 +34,7 @@ public class AppLockPlugin extends Plugin {
         ret.put("enabled", AppLockPrefs.isEnabled(ctx));
         ret.put("mode", AppLockPrefs.getMode(ctx));
         ret.put("packages", jsonFromSet(AppLockPrefs.getLockedPackages(ctx)));
-        ret.put("hasUnlockToken", AppLockPrefs.hasUnlockToken(ctx));
+        ret.put("hasGateReadingContent", BibleGateNavigator.assetExists(ctx));
         ret.put("accessibilityServiceEnabled", isAccessibilityServiceEnabled(ctx));
         call.resolve(ret);
     }
@@ -69,13 +69,6 @@ public class AppLockPlugin extends Plugin {
             }
         }
         AppLockPrefs.setLockedPackages(getContext(), set);
-        call.resolve();
-    }
-
-    @PluginMethod
-    public void reportReadingComplete(PluginCall call) {
-        String level = call.getString("level", "paragraph");
-        AppLockPrefs.grantUnlockFromReading(getContext(), level);
         call.resolve();
     }
 

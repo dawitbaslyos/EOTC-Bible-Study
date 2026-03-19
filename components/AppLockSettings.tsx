@@ -116,9 +116,8 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       </div>
 
       <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
-        Choose apps to pause until you read in Senay. Requires the Android accessibility service so Senay can
-        show a blocking screen over those apps. One successful reading session unlocks the next open of a locked
-        app, then you need to read again.
+        Locked apps show a Bible gate from <span className="font-mono">bible-content.json</span> (bundled with Senay).
+        Your place advances each time you finish the gate. Choose one verse per lock or a full chapter below.
       </p>
 
       {state === null && (
@@ -157,7 +156,7 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
           </button>
 
           <div className="space-y-2">
-            <div className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">Reading required</div>
+            <div className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">Gate step size</div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
@@ -171,7 +170,7 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
               >
                 <div className="text-xs font-bold">Paragraph</div>
                 <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
-                  Reach the end of the reading screen, then continue
+                  One verse at a time; order follows the Bible file
                 </div>
               </button>
               <button
@@ -186,7 +185,7 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
               >
                 <div className="text-xs font-bold">Chapter</div>
                 <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
-                  Finish a full chapter (or Wudase summary)
+                  Whole chapter each time; next lock continues with the next chapter
                 </div>
               </button>
             </div>
@@ -247,9 +246,11 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
             )}
           </div>
 
-          {state.hasUnlockToken && (
-            <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-wide">
-              You have an unlock ready for the next locked app you open.
+          {!state.hasGateReadingContent && (
+            <p className="text-[10px] text-amber-500/90 leading-relaxed">
+              Bible file missing from the app bundle. Run <span className="font-mono">npm run build</span> then{' '}
+              <span className="font-mono">npx cap sync android</span> so <span className="font-mono">public/data/bible-content.json</span>{' '}
+              is copied into the APK.
             </p>
           )}
         </div>

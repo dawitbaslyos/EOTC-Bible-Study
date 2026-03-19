@@ -6,12 +6,16 @@
     <string name="custom_url_scheme">com.senay.app</string>
 
     <string name="read_gate_service_label">Senay Focus Lock</string>
-    <string name="read_gate_accessibility_desc">Senay can briefly show a screen over apps you choose until you complete your reading in Senay. Turn this on only if you use Focus Lock in Settings.</string>
+    <string name="read_gate_accessibility_desc">Senay shows a full-screen Bible reading gate over apps you choose. Enable only if you use Focus Lock in Senay settings.</string>
 
-    <string name="app_lock_overlay_title">Pause — read first</string>
-    <string name="app_lock_overlay_title_fmt">%1$s is paused</string>
-    <string name="app_lock_overlay_message_fmt">Open Senay and read before continuing. Required: %1$s.</string>
-    <string name="app_lock_open_senay">Open Senay</string>
-    <string name="app_lock_mode_paragraph_hint">scroll to the end of the current reading screen (paragraph)</string>
-    <string name="app_lock_mode_chapter_hint">finish a full chapter (or daily Wudase summary)</string>
+    <string name="app_lock_header_fmt">Reading gate · %1$s</string>
+    <string name="app_lock_prompt_body">To use this app, read a short passage from the Holy Bible (from Senay). Tap below to show today’s passage.</string>
+    <string name="app_lock_unlock_prompt_button">Unlock app</string>
+    <string name="app_lock_prompt_footer_hint">Your place in Scripture is saved and advances each time you complete the gate.</string>
+    <string name="app_lock_scroll_hint">Scroll to the bottom to continue.</string>
+    <string name="app_lock_open_app_placeholder">Open app</string>
+    <string name="app_lock_open_app_fmt">Open %1$s</string>
+    <string name="app_lock_footer_next_lock">Next time: you’ll see this gate again when you leave this app or after about one hour.</string>
+    <string name="app_lock_loading">Loading passage…</string>
+    <string name="app_lock_bible_missing">Bible text not found. Reinstall Senay or run Sync in the app.</string>
 </resources>

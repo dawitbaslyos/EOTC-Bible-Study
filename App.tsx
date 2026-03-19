@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Capacitor } from '@capacitor/core';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppPhase, WudaseLiturgy, DailyManna, Quote, BibleBookJSON, UserStats, Theme, RitualTime, Book } from './types';
 import Dashboard from './components/Dashboard';
 import PreparationPhase from './components/PreparationPhase';
@@ -14,8 +13,6 @@ import NotificationCenter, { NotificationToast } from './components/Notification
 import { useProgress } from './hooks/useProgress';
 import { useNotifications } from './hooks/useNotifications';
 import { sendWelcomeNotification, schedulePrayerTimeReminders } from './utils/nativeNotifications';
-import { AppLock } from './src/plugins/app-lock';
-
 interface UserProfile {
   name: string;
   email: string;
@@ -43,23 +40,6 @@ const App: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('senay_theme') as Theme) || 'dark');
-  const [appLockEnabled, setAppLockEnabled] = useState(false);
-  const [appLockMode, setAppLockMode] = useState<'paragraph' | 'chapter'>('paragraph');
-
-  const refreshAppLock = useCallback(async () => {
-    if (Capacitor.getPlatform() !== 'android') return;
-    try {
-      const s = await AppLock.getState();
-      setAppLockEnabled(!!s.enabled);
-      setAppLockMode(s.mode === 'chapter' ? 'chapter' : 'paragraph');
-    } catch {
-      setAppLockEnabled(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void refreshAppLock();
-  }, [refreshAppLock]);
   
   const cloudUid = user?.provider === 'guest' ? null : (user?.uid || null);
   const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
@@ -268,34 +248,11 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFinishReading = async () => {
+  const handleFinishReading = () => {
     if (readingData) {
       completeChapter(readingData.bookId, readingData.chapter);
     }
-    if (Capacitor.getPlatform() === 'android' && appLockEnabled && appLockMode === 'chapter') {
-      await AppLock.reportReadingComplete({ level: 'chapter' }).catch(() => {});
-    }
     goToPhase(AppPhase.DASHBOARD);
-  };
-
-  const handleReadingNext = () => {
-    if (isDailyWudase && readingData && readingData.chapter === 1) {
-      startFlow('wudase', true, 2);
-      return;
-    }
-    if (isDailyWudase) {
-      if (Capacitor.getPlatform() === 'android' && appLockEnabled && appLockMode === 'paragraph') {
-        void AppLock.reportReadingComplete({ level: 'paragraph' }).catch(() => {});
-      }
-      goToPhase(AppPhase.SUMMARY);
-      return;
-    }
-    if (Capacitor.getPlatform() === 'android' && appLockEnabled && appLockMode === 'paragraph') {
-      void AppLock.reportReadingComplete({ level: 'paragraph' }).catch(() => {});
-      goToPhase(AppPhase.DASHBOARD);
-      return;
-    }
-    void handleFinishReading();
   };
 
   // 1. First Priority: Onboarding
@@ -339,7 +296,6 @@ const App: React.FC = () => {
             rituals={stats.preferredRituals || ['day']}
             setRituals={(r) => saveStats({ ...stats, preferredRituals: r })}
             onLogout={handleLogout}
-            onAppLockChange={() => void refreshAppLock()}
           />
         )}
 
@@ -357,7 +313,7 @@ const App: React.FC = () => {
           <ReadingPhase 
             data={readingData} 
             isDailyManna={isDailyWudase}
-            onNext={handleReadingNext} 
+            onNext={() => isDailyWudase && readingData.chapter === 1 ? startFlow('wudase', true, 2) : (isDailyWudase ? goToPhase(AppPhase.SUMMARY) : handleFinishReading())} 
             onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)}
             onFinish={() => goToPhase(AppPhase.DASHBOARD)}
             onSelectChapter={(chapter) => startFlow(readingData.bookId, false, chapter)}

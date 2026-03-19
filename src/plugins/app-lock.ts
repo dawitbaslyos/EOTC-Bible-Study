@@ -4,9 +4,10 @@ export type AppLockMode = 'paragraph' | 'chapter';
 
 export interface AppLockState {
   enabled: boolean;
+  /** Paragraph = one verse at a time; chapter = full chapter each lock. */
   mode: AppLockMode;
   packages: string[];
-  hasUnlockToken: boolean;
+  hasGateReadingContent: boolean;
   accessibilityServiceEnabled: boolean;
 }
 
@@ -20,7 +21,6 @@ export interface AppLockPlugin {
   setEnabled(options: { enabled: boolean }): Promise<void>;
   setMode(options: { mode: AppLockMode }): Promise<void>;
   setLockedPackages(options: { packages: string[] }): Promise<void>;
-  reportReadingComplete(options: { level: AppLockMode }): Promise<void>;
   openAccessibilitySettings(): Promise<void>;
   getLauncherApps(): Promise<{ apps: LauncherAppRow[] }>;
 }

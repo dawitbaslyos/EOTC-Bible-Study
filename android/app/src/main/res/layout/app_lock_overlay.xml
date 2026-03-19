@@ -3,49 +3,156 @@
     android:id="@+id/app_lock_overlay_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F20A0A0C"
+    android:background="#FF0A0A0C"
     android:clickable="true"
     android:focusable="true">
 
+    <!-- Step 1: prompt only -->
     <LinearLayout
+        android:id="@+id/app_lock_phase_prompt"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
+        android:layout_height="match_parent"
+        android:gravity="center"
         android:orientation="vertical"
-        android:padding="32dp"
-        android:gravity="center_horizontal">
+        android:padding="32dp">
 
         <TextView
-            android:id="@+id/app_lock_title"
-            android:layout_width="wrap_content"
+            android:id="@+id/app_lock_prompt_title"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="@string/app_lock_overlay_title"
+            android:gravity="center"
+            android:paddingBottom="12dp"
             android:textColor="#FFD4AF37"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:paddingBottom="12dp" />
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
         <TextView
-            android:id="@+id/app_lock_message"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text=""
-            android:textColor="#E6FFFFFF"
-            android:textSize="15sp"
             android:gravity="center"
-            android:lineSpacingMultiplier="1.2"
-            android:paddingBottom="28dp" />
+            android:lineSpacingMultiplier="1.25"
+            android:paddingBottom="28dp"
+            android:text="@string/app_lock_prompt_body"
+            android:textColor="#B3FFFFFF"
+            android:textSize="14sp" />
 
         <Button
-            android:id="@+id/app_lock_open_senay"
+            android:id="@+id/app_lock_btn_start_reading"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="@string/app_lock_open_senay"
+            android:paddingLeft="32dp"
+            android:paddingTop="16dp"
+            android:paddingRight="32dp"
+            android:paddingBottom="16dp"
+            android:text="@string/app_lock_unlock_prompt_button"
+            android:textAllCaps="false" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingTop="24dp"
+            android:text="@string/app_lock_prompt_footer_hint"
+            android:textColor="#66FFFFFF"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Step 2: reading + open app -->
+    <LinearLayout
+        android:id="@+id/app_lock_phase_reading"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingTop="28dp"
+        android:paddingBottom="16dp"
+        android:visibility="gone">
+
+        <TextView
+            android:id="@+id/app_lock_header_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="4dp"
+            android:textColor="#FFD4AF37"
+            android:textSize="17sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/app_lock_header_sub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:letterSpacing="0.06"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="12dp"
             android:textAllCaps="false"
-            android:paddingLeft="28dp"
-            android:paddingRight="28dp"
+            android:textColor="#99FFFFFF"
+            android:textSize="12sp" />
+
+        <ScrollView
+            android:id="@+id/app_lock_scroll"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:fillViewport="true"
+            android:overScrollMode="ifContentScrolls"
+            android:paddingLeft="20dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="12dp"
+            android:scrollbars="vertical">
+
+            <TextView
+                android:id="@+id/app_lock_reading_body"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:lineSpacingMultiplier="1.35"
+                android:textColor="#E6FFFFFF"
+                android:textIsSelectable="false"
+                android:textSize="16sp" />
+        </ScrollView>
+
+        <TextView
+            android:id="@+id/app_lock_scroll_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingLeft="16dp"
+            android:paddingTop="8dp"
+            android:paddingRight="16dp"
+            android:paddingBottom="8dp"
+            android:text="@string/app_lock_scroll_hint"
+            android:textColor="#88FFFFFF"
+            android:textSize="11sp" />
+
+        <Button
+            android:id="@+id/app_lock_open_app"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:alpha="0.45"
+            android:enabled="false"
             android:paddingTop="14dp"
-            android:paddingBottom="14dp" />
+            android:paddingBottom="14dp"
+            android:text="@string/app_lock_open_app_placeholder"
+            android:textAllCaps="false" />
+
+        <TextView
+            android:id="@+id/app_lock_next_lock_footer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center"
+            android:paddingLeft="20dp"
+            android:paddingTop="10dp"
+            android:paddingRight="20dp"
+            android:paddingBottom="8dp"
+            android:text="@string/app_lock_footer_next_lock"
+            android:textColor="#66FFFFFF"
+            android:textSize="10sp"
+            android:lineSpacingMultiplier="1.2" />
     </LinearLayout>
 </FrameLayout>
