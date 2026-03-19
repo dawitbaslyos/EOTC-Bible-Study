@@ -105,6 +105,8 @@ export interface UserStats {
   totalSessions: number;
   dedicationLevel?: DedicationLevel;
   preferredRituals?: RitualTime[];
+  /** Local times for daily routine notifications (when morning/evening ritual is enabled). */
+  ritualReminderTimes?: Partial<Record<RitualTime, { hour: number; minute: number }>>;
   hasCompletedOnboarding?: boolean;
   streak: number;
   lastStudyDate?: string;

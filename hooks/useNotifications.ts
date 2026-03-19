@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Capacitor } from '@capacitor/core';
 import { Notification, NotificationType, NotificationPriority, EthiopianHoliday, FastingSeason } from '../types';
 import { getEthiopianDate } from '../utils/ethiopianCalendar';
+import { showTrayNotification } from '../utils/nativeNotifications';
 
 const STORAGE_KEY = 'senay_notifications';
 const NOTIFIED_EVENTS_KEY = 'senay_notified_events';
@@ -117,6 +119,10 @@ export const useNotifications = () => {
     if (n.priority === 'high' || n.priority === 'normal') {
       setActiveToast(newNotification);
       setTimeout(() => setActiveToast(null), 5000);
+    }
+
+    if (Capacitor.isNativePlatform() && (n.priority === 'high' || n.priority === 'normal')) {
+      showTrayNotification(n.title, n.body).catch(() => {});
     }
   }, []);
 

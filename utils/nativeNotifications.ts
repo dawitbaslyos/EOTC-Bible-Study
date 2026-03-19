@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
+import type { UserStats, RitualTime } from '../types';
 
 export async function sendWelcomeNotification(name: string) {
   if (!Capacitor.isNativePlatform()) return;
@@ -48,10 +49,57 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
 }
 
 const PRAYER_CHANNEL_ID = 'senay_prayer_reminders';
-const PRAYER_MORNING_ID = 2001;
-const PRAYER_AFTERNOON_ID = 2002;
+const EVENTS_CHANNEL_ID = 'senay_app_events';
 
-export async function schedulePrayerTimeReminders(morningHour = 6, morningMinute = 0, afternoonHour = 15, afternoonMinute = 0): Promise<boolean> {
+export const PRAYER_MORNING_ID = 2001;
+export const PRAYER_AFTERNOON_ID = 2002;
+export const OPEN_APP_REMINDER_ID = 2003;
+
+const DEFAULT_MORNING = { hour: 6, minute: 0 };
+const DEFAULT_EVENING = { hour: 21, minute: 0 };
+
+async function ensureChannels() {
+  await LocalNotifications.createChannel({
+    id: PRAYER_CHANNEL_ID,
+    name: 'Prayer reminders',
+    description: 'Morning and evening routine reminders for Senay',
+    importance: 4
+  });
+  await LocalNotifications.createChannel({
+    id: EVENTS_CHANNEL_ID,
+    name: 'Senay updates',
+    description: 'Holidays, fasting, and gentle nudges from Senay',
+    importance: 3
+  });
+}
+
+/** @deprecated Use syncRitualRemindersFromStats — kept for older call sites */
+export async function schedulePrayerTimeReminders(
+  morningHour = 6,
+  morningMinute = 0,
+  afternoonHour = 15,
+  afternoonMinute = 0
+): Promise<boolean> {
+  const stats: UserStats = {
+    rank: '',
+    studyHistory: {},
+    bookProgress: {},
+    totalSessions: 0,
+    streak: 0,
+    preferredRituals: ['day', 'night'],
+    ritualReminderTimes: {
+      day: { hour: morningHour, minute: morningMinute },
+      night: { hour: afternoonHour, minute: afternoonMinute }
+    }
+  };
+  return syncRitualRemindersFromStats(stats);
+}
+
+/**
+ * Schedules only the routines the user enabled (morning = day, evening = night),
+ * at the times stored in stats (defaults 6:00 / 21:00 local).
+ */
+export async function syncRitualRemindersFromStats(stats: UserStats): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false;
 
   const perm = await LocalNotifications.checkPermissions();
@@ -60,51 +108,119 @@ export async function schedulePrayerTimeReminders(morningHour = 6, morningMinute
     if (req.display !== 'granted') return false;
   }
 
-  // Ensure the Android channel exists (used on Android 26+).
-  // This is safe to call repeatedly.
-  await LocalNotifications.createChannel({
-    id: PRAYER_CHANNEL_ID,
-    name: 'Prayer reminders',
-    description: 'Morning and afternoon prayer reminders for Senay',
-    importance: 4
-  });
+  await ensureChannels();
 
-  // Replace old reminders so the user doesn't get duplicates.
   await LocalNotifications.cancel({
     notifications: [{ id: PRAYER_MORNING_ID }, { id: PRAYER_AFTERNOON_ID }]
   });
 
-  await LocalNotifications.schedule({
-    notifications: [
-      {
-        id: PRAYER_MORNING_ID,
-        title: 'Morning Prayer',
-        body: 'Time to pray and reflect. Open Senay to continue.',
-        largeBody: 'Time to pray and reflect. Open Senay to continue your readings and prayers.',
-        summaryText: 'Morning prayer time',
-        channelId: PRAYER_CHANNEL_ID,
-        schedule: {
-          repeats: true,
-          every: 'day',
-          on: { hour: morningHour, minute: morningMinute }
-        }
-      },
-      {
-        id: PRAYER_AFTERNOON_ID,
-        title: 'Afternoon Prayer',
-        body: 'Afternoon prayer reminder. Keep your mind in prayer.',
-        largeBody: 'Afternoon prayer reminder. Open Senay to continue reflecting and reading.',
-        summaryText: 'Afternoon prayer time',
-        channelId: PRAYER_CHANNEL_ID,
-        schedule: {
-          repeats: true,
-          every: 'day',
-          on: { hour: afternoonHour, minute: afternoonMinute }
-        }
-      }
-    ]
-  });
+  const rituals = stats.preferredRituals?.length ? stats.preferredRituals : ['day'];
+  const times = stats.ritualReminderTimes || {};
+
+  const notifications: {
+    id: number;
+    title: string;
+    body: string;
+    largeBody?: string;
+    summaryText?: string;
+    channelId: string;
+    schedule: { repeats: true; every: 'day'; on: { hour: number; minute: number } };
+  }[] = [];
+
+  const pick = (r: RitualTime, defaults: { hour: number; minute: number }) => {
+    const t = times[r];
+    return {
+      hour: t?.hour ?? defaults.hour,
+      minute: t?.minute ?? defaults.minute
+    };
+  };
+
+  if (rituals.includes('day')) {
+    const t = pick('day', DEFAULT_MORNING);
+    notifications.push({
+      id: PRAYER_MORNING_ID,
+      title: 'Morning routine',
+      body: 'Time for your morning reading and prayer. Open Senay when you are ready.',
+      largeBody: 'Time for your morning reading and prayer. Open Senay to continue.',
+      summaryText: 'Morning routine',
+      channelId: PRAYER_CHANNEL_ID,
+      schedule: { repeats: true, every: 'day', on: { hour: t.hour, minute: t.minute } }
+    });
+  }
+
+  if (rituals.includes('night')) {
+    const t = pick('night', DEFAULT_EVENING);
+    notifications.push({
+      id: PRAYER_AFTERNOON_ID,
+      title: 'Evening routine',
+      body: 'Time for your evening reflection. Open Senay to read and pray.',
+      largeBody: 'Evening routine reminder. Open Senay to continue your readings.',
+      summaryText: 'Evening routine',
+      channelId: PRAYER_CHANNEL_ID,
+      schedule: { repeats: true, every: 'day', on: { hour: t.hour, minute: t.minute } }
+    });
+  }
+
+  if (notifications.length > 0) {
+    await LocalNotifications.schedule({ notifications });
+  }
 
   return true;
 }
 
+/**
+ * Cancels any pending “come back” notification and schedules a new one `daysFromNow` from now.
+ * Call whenever the app becomes visible so inactive users get one reminder.
+ */
+export async function rescheduleOpenAppReminder(daysFromNow = 3): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  const perm = await LocalNotifications.checkPermissions();
+  if (perm.display !== 'granted') {
+    const req = await LocalNotifications.requestPermissions();
+    if (req.display !== 'granted') return;
+  }
+
+  await ensureChannels();
+
+  await LocalNotifications.cancel({ notifications: [{ id: OPEN_APP_REMINDER_ID }] });
+
+  const at = new Date(Date.now() + daysFromNow * 24 * 60 * 60 * 1000);
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: OPEN_APP_REMINDER_ID,
+        title: 'Your Senay moment',
+        body: "It's been a few days. Step back into prayer and reading when you can.",
+        channelId: EVENTS_CHANNEL_ID,
+        schedule: { at }
+      }
+    ]
+  });
+}
+
+/** Short system notification (e.g. mirror in-app holiday / fasting alerts). */
+export async function showTrayNotification(title: string, body: string): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  const perm = await LocalNotifications.checkPermissions();
+  if (perm.display !== 'granted') {
+    const req = await LocalNotifications.requestPermissions();
+    if (req.display !== 'granted') return;
+  }
+
+  await ensureChannels();
+
+  const id = 3100 + Math.floor(Math.random() * 89);
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id,
+        title,
+        body,
+        channelId: EVENTS_CHANNEL_ID,
+        schedule: { at: new Date(Date.now() + 750) }
+      }
+    ]
+  });
+}

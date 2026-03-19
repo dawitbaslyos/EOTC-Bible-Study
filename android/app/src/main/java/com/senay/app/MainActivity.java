@@ -9,5 +9,12 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppLockPlugin.class);
         super.onCreate(savedInstanceState);
+        WidgetAlarmScheduler.startIfWidgetsExist(this);
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        WidgetAlarmScheduler.startIfWidgetsExist(this);
     }
 }

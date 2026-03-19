@@ -12,7 +12,11 @@ import SettingsPage from './components/SettingsPage';
 import NotificationCenter, { NotificationToast } from './components/NotificationCenter';
 import { useProgress } from './hooks/useProgress';
 import { useNotifications } from './hooks/useNotifications';
-import { sendWelcomeNotification, schedulePrayerTimeReminders } from './utils/nativeNotifications';
+import {
+  sendWelcomeNotification,
+  syncRitualRemindersFromStats,
+  rescheduleOpenAppReminder
+} from './utils/nativeNotifications';
 interface UserProfile {
   name: string;
   email: string;
@@ -138,12 +142,13 @@ const App: React.FC = () => {
   const handleOnboardingComplete = (rituals: RitualTime[]) => {
     setHasSeenOnboarding(true);
     localStorage.setItem('senay_onboarding_complete', 'true');
-    // Save chosen rituals to user stats
-    saveStats({
+    const next: UserStats = {
       ...stats,
       preferredRituals: rituals,
       hasCompletedOnboarding: true
-    });
+    };
+    saveStats(next);
+    syncRitualRemindersFromStats(next).catch(() => {});
   };
 
   const handleLogin = (profile: UserProfile) => {
@@ -154,34 +159,44 @@ const App: React.FC = () => {
       title: "Peace be with you", 
       body: `Welcome to your sanctuary, ${profile.name.split(' ')[0]}.`, 
       type: 'emotional', 
-      priority: 'normal' 
+      priority: 'low'
     });
 
     sendWelcomeNotification(profile.name.split(' ')[0]).catch(() => {
       // native notifications might not be available; fail silently
     });
 
-    schedulePrayerTimeReminders()
-      .then((ok) => {
-        if (ok) localStorage.setItem('senay_prayer_reminders_scheduled', 'true');
-      })
-      .catch(() => {});
+    syncRitualRemindersFromStats(stats).catch(() => {});
   };
 
-  // Also ensure prayer reminders are scheduled when the app loads with a saved user.
+  // Keep native routine alarms in sync with settings (all users, including guest).
   useEffect(() => {
-    if (!user) return;
-    if (user.provider === 'guest') return;
+    if (!user || !hasSeenOnboarding) return;
+    syncRitualRemindersFromStats(stats).catch(() => {});
+  }, [
+    user?.uid,
+    user?.provider,
+    hasSeenOnboarding,
+    JSON.stringify(stats.preferredRituals ?? []),
+    JSON.stringify(stats.ritualReminderTimes ?? {})
+  ]);
 
-    const already = localStorage.getItem('senay_prayer_reminders_scheduled') === 'true';
-    if (already) return;
+  // Gentle “open Senay” reminder after a few days away; reset whenever app is visible.
+  useEffect(() => {
+    if (!user || !hasSeenOnboarding) return;
 
-    schedulePrayerTimeReminders()
-      .then((ok) => {
-        if (ok) localStorage.setItem('senay_prayer_reminders_scheduled', 'true');
-      })
-      .catch(() => {});
-  }, [user?.uid, user?.provider]);
+    const bump = () => {
+      localStorage.setItem('senay_last_app_open', String(Date.now()));
+      rescheduleOpenAppReminder(3).catch(() => {});
+    };
+
+    bump();
+    const onVis = () => {
+      if (document.visibilityState === 'visible') bump();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [user?.uid, hasSeenOnboarding]);
 
   const handleLogout = () => {
     setUser(null);
@@ -295,6 +310,8 @@ const App: React.FC = () => {
             setTheme={setTheme}
             rituals={stats.preferredRituals || ['day']}
             setRituals={(r) => saveStats({ ...stats, preferredRituals: r })}
+            ritualReminderTimes={stats.ritualReminderTimes}
+            setRitualReminderTimes={(t) => saveStats({ ...stats, ritualReminderTimes: t })}
             onLogout={handleLogout}
           />
         )}

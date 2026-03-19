@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Icons } from '../constants';
-import { Theme, RitualTime } from '../types';
+import { Theme, RitualTime, UserStats } from '../types';
 import { AppLockSettings } from './AppLockSettings';
 
 interface Props {
@@ -10,11 +10,15 @@ interface Props {
   setTheme: (theme: Theme) => void;
   rituals: RitualTime[];
   setRituals: (rituals: RitualTime[]) => void;
+  ritualReminderTimes?: UserStats['ritualReminderTimes'];
+  setRitualReminderTimes: (t: UserStats['ritualReminderTimes']) => void;
   onLogout: () => void;
 }
 
+const pad2 = (n: number) => String(n).padStart(2, '0');
+
 const SettingsPage: React.FC<Props> = ({ 
-  onClose, theme, setTheme, rituals, setRituals, onLogout
+  onClose, theme, setTheme, rituals, setRituals, ritualReminderTimes, setRitualReminderTimes, onLogout
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -79,23 +83,48 @@ const SettingsPage: React.FC<Props> = ({
               { id: 'night' as RitualTime, label: 'Evening Routine', icon: <Icons.Moon className="w-5 h-5" />, desc: 'End with reflection' }
             ].map((r) => {
               const active = rituals.includes(r.id);
+              const defaults = r.id === 'day' ? { hour: 6, minute: 0 } : { hour: 21, minute: 0 };
+              const t = ritualReminderTimes?.[r.id] ?? defaults;
+              const timeValue = `${pad2(t.hour)}:${pad2(t.minute)}`;
               return (
-                <button 
-                  key={r.id}
-                  onClick={() => toggleRitual(r.id)}
-                  className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all ${active ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-md' : 'bg-[var(--card-bg)] border-theme opacity-60'}`}
-                >
-                  <div className="flex items-center space-x-5">
-                    <div className={active ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'}>{r.icon}</div>
-                    <div className="text-left">
-                      <div className={`text-sm font-bold ${active ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>{r.label}</div>
-                      <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter">{r.desc}</div>
+                <div key={r.id} className="space-y-2">
+                  <button 
+                    type="button"
+                    onClick={() => toggleRitual(r.id)}
+                    className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all ${active ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-md' : 'bg-[var(--card-bg)] border-theme opacity-60'}`}
+                  >
+                    <div className="flex items-center space-x-5">
+                      <div className={active ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'}>{r.icon}</div>
+                      <div className="text-left">
+                        <div className={`text-sm font-bold ${active ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>{r.label}</div>
+                        <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter">{r.desc}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${active ? 'border-[var(--gold)] bg-[var(--gold)]' : 'border-theme'}`}>
-                    {active && <Icons.ChevronRight className="w-3 h-3 text-black" />}
-                  </div>
-                </button>
+                    <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${active ? 'border-[var(--gold)] bg-[var(--gold)]' : 'border-theme'}`}>
+                      {active && <Icons.ChevronRight className="w-3 h-3 text-black" />}
+                    </div>
+                  </button>
+                  {active && (
+                    <label className="flex items-center justify-between gap-4 px-4 py-3 rounded-2xl bg-[var(--card-bg)] border border-theme">
+                      <span className="text-[10px] uppercase tracking-widest text-[var(--text-muted)]">Reminder time</span>
+                      <input
+                        type="time"
+                        value={timeValue}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          if (!v) return;
+                          const [hh, mm] = v.split(':').map((x) => parseInt(x, 10));
+                          if (Number.isNaN(hh) || Number.isNaN(mm)) return;
+                          setRitualReminderTimes({
+                            ...ritualReminderTimes,
+                            [r.id]: { hour: hh, minute: mm }
+                          });
+                        }}
+                        className="bg-transparent text-[var(--text-primary)] text-sm font-mono border border-theme rounded-lg px-2 py-1"
+                      />
+                    </label>
+                  )}
+                </div>
               );
             })}
           </div>

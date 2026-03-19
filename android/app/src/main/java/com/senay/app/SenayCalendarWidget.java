@@ -7,77 +7,94 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
 /**
- * Simple home‑screen widget showing today's Ethiopian date and a compact heatmap bar.
- *
- * NOTE: This reads data that the web app persists into SharedPreferences via Capacitor or
- * another bridge. For now, it will fallback gracefully if no data is present.
+ * Home-screen widget: Ethiopian date and local time update every minute via {@link WidgetAlarmScheduler}.
+ * Saint / holiday / streak come from the web app's {@code widget_snapshot} when available.
  */
 public class SenayCalendarWidget extends AppWidgetProvider {
 
-    // Use Capacitor's default storage so we don't need a custom plugin
     private static final String PREFS_NAME = "CapacitorStorage";
     private static final String KEY_SNAPSHOT = "widget_snapshot";
+
+    public static void refreshAll(Context context) {
+        AppWidgetManager mgr = AppWidgetManager.getInstance(context);
+        ComponentName cn = new ComponentName(context, SenayCalendarWidget.class);
+        int[] ids = mgr.getAppWidgetIds(cn);
+        for (int appWidgetId : ids) {
+            Bundle options = mgr.getAppWidgetOptions(appWidgetId);
+            updateAppWidget(context, mgr, appWidgetId, options);
+        }
+    }
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         super.onUpdate(context, appWidgetManager, appWidgetIds);
-
         for (int appWidgetId : appWidgetIds) {
             Bundle options = appWidgetManager.getAppWidgetOptions(appWidgetId);
-            updateWidget(context, appWidgetManager, appWidgetId, options);
+            updateAppWidget(context, appWidgetManager, appWidgetId, options);
         }
+        WidgetAlarmScheduler.startIfWidgetsExist(context);
+    }
+
+    @Override
+    public void onEnabled(Context context) {
+        super.onEnabled(context);
+        WidgetAlarmScheduler.startIfWidgetsExist(context);
+    }
+
+    @Override
+    public void onDisabled(Context context) {
+        WidgetAlarmScheduler.stop(context);
+        super.onDisabled(context);
     }
 
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle newOptions) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
-        updateWidget(context, appWidgetManager, appWidgetId, newOptions);
+        updateAppWidget(context, appWidgetManager, appWidgetId, newOptions);
     }
 
     @Override
     public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
-
-        // Allow manual refresh broadcasts if needed later
         if ("com.senay.app.ACTION_REFRESH_WIDGET".equals(intent.getAction())) {
-            AppWidgetManager mgr = AppWidgetManager.getInstance(context);
-            ComponentName cn = new ComponentName(context, SenayCalendarWidget.class);
-            int[] ids = mgr.getAppWidgetIds(cn);
-            onUpdate(context, mgr, ids);
+            refreshAll(context);
         }
     }
 
-    private void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle options) {
+    private static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId, Bundle options) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_senay_calendar);
 
-        // Load snapshot JSON from shared prefs
+        EthiopianDateHelper.EthiopianDate eth = EthiopianDateHelper.getEthiopianDateNow();
+        String dateLabel = eth.dateLabel();
+        String yearLabel = eth.yearName;
+
+        SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        String timeStr = timeFormat.format(new Date());
+
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String snapshotJson = prefs.getString(KEY_SNAPSHOT, null);
 
-        String dateLabel = "Ethiopian Calendar";
-        String yearLabel = "";
         String saintOrHoliday = "";
         int streak = 0;
 
         if (snapshotJson != null) {
             try {
                 JSONObject obj = new JSONObject(snapshotJson);
-                dateLabel = obj.optString("dateLabel", dateLabel);
-                yearLabel = obj.optString("yearLabel", yearLabel);
                 saintOrHoliday = obj.optString("saintOrHoliday", "");
                 streak = obj.optInt("streak", 0);
-
             } catch (JSONException e) {
                 e.printStackTrace();
             }
@@ -85,12 +102,12 @@ public class SenayCalendarWidget extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_date, dateLabel);
         views.setTextViewText(R.id.widget_year, yearLabel);
+        views.setTextViewText(R.id.widget_time, timeStr);
         views.setTextViewText(R.id.widget_saint, saintOrHoliday);
 
         String streakText = streak > 0 ? "\uD83D\uDD6F " + streak + " days" : "";
         views.setTextViewText(R.id.widget_streak, streakText);
 
-        // Adjust visibility based on widget size (portrait vs landscape, small vs large)
         int minWidth = 0;
         int minHeight = 0;
         if (options != null) {
@@ -100,23 +117,20 @@ public class SenayCalendarWidget extends AppWidgetProvider {
         boolean isPortrait = minHeight > minWidth;
         int area = minWidth * minHeight;
 
-        // Very small area: only show date + saint
         if (area > 0 && area < 4000) {
             views.setViewVisibility(R.id.widget_year, View.GONE);
+            views.setViewVisibility(R.id.widget_time, View.GONE);
             views.setViewVisibility(R.id.widget_streak, View.GONE);
-        }
-        // Medium area or tall portrait: show date, saint, year
-        else if (area > 0 && area < 9000) {
+        } else if (area > 0 && area < 9000) {
             views.setViewVisibility(R.id.widget_year, View.VISIBLE);
+            views.setViewVisibility(R.id.widget_time, View.VISIBLE);
             views.setViewVisibility(R.id.widget_streak, isPortrait ? View.VISIBLE : View.GONE);
-        }
-        // Large area: show everything
-        else {
+        } else {
             views.setViewVisibility(R.id.widget_year, View.VISIBLE);
+            views.setViewVisibility(R.id.widget_time, View.VISIBLE);
             views.setViewVisibility(R.id.widget_streak, View.VISIBLE);
         }
 
-        // Tap widget → open app
         Intent intent = new Intent(context, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context,
@@ -131,4 +145,3 @@ public class SenayCalendarWidget extends AppWidgetProvider {
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }
 }
-
