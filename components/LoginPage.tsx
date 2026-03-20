@@ -1,5 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Icons } from '../constants';
 import { auth } from '../firebaseClient';
 import {
@@ -7,6 +9,8 @@ import {
   GoogleAuthProvider,
   getRedirectResult,
   onAuthStateChanged,
+  signInWithCredential,
+  signInWithPopup,
   signInWithRedirect
 } from 'firebase/auth';
 
@@ -60,6 +64,14 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
     return () => unsub();
   }, [onLogin]);
 
+  // Native: load Google Sign-In config from capacitor.config (serverClientId for Firebase id token).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    GoogleAuth.initialize().catch((err) => {
+      console.warn('GoogleAuth.initialize failed:', err);
+    });
+  }, []);
+
   const simulateGuestLogin = () => {
     setIsLoading('guest');
     setTimeout(() => {
@@ -77,19 +89,37 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
   const handleOAuthLogin = async (providerType: 'google' | 'facebook') => {
     setIsLoading(providerType);
     try {
-      const provider =
-        providerType === 'google'
-          ? new GoogleAuthProvider()
-          : new FacebookAuthProvider();
+      if (providerType === 'google') {
+        // Android/iOS: native account picker + ID token → Firebase (no external browser tab).
+        if (Capacitor.isNativePlatform()) {
+          const googleUser = await GoogleAuth.signIn();
+          const idToken = googleUser.authentication?.idToken;
+          if (!idToken) {
+            throw new Error('Google Sign-In did not return an ID token.');
+          }
+          const credential = GoogleAuthProvider.credential(idToken);
+          await signInWithCredential(auth, credential);
+        } else {
+          // Web: same-tab popup (no full-page redirect).
+          await signInWithPopup(auth, new GoogleAuthProvider());
+        }
+        return;
+      }
 
-      // Redirect-based OAuth is more mobile compatible than popups.
+      const provider = new FacebookAuthProvider();
+      // Facebook still uses redirect (native SDK not wired).
       await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      // Keep UI usable; user can try again.
-      console.error('OAuth login failed:', err);
-      setIsLoading(null);
+      const code = String(err?.code ?? err?.error ?? '');
+      const msg = String(err?.message ?? err ?? '');
+      const cancelled =
+        code === '10' ||
+        code === '12501' ||
+        /cancel|canceled|12501|SIGN_IN_CANCELLED/i.test(msg);
+      if (!cancelled) {
+        console.error('OAuth login failed:', err);
+      }
     } finally {
-      // On success we navigate away via redirect, so this is mainly for error cases.
       setIsLoading(null);
     }
   };
@@ -112,7 +142,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
           </div>
         </div>
 
-        <div className="bg-[var(--card-bg)] border border-theme rounded-[3rem] p-10 space-y-8 shadow-2xl backdrop-blur-sm">
+        <div className="bg-[var(--bg-secondary)] border border-theme rounded-[3rem] p-10 space-y-8 shadow-2xl">
           <div className="text-center space-y-2">
             <h2 className="text-xl serif text-[var(--text-primary)]">Welcome, Seekers</h2>
             <p className="text-xs text-[var(--text-muted)]">Sign in to sync your progress, or explore as a guest.</p>

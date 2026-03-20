@@ -2,23 +2,32 @@
  * Initialize Capacitor plugins and handle platform-specific setup
  */
 
+/** After OAuth / Play Store / account UI, Android WebView sometimes leaves a grey unpainted band; nudge compositing. */
+function nudgeWebViewRepaint() {
+  requestAnimationFrame(() => {
+    window.dispatchEvent(new Event('resize'));
+    const html = document.documentElement;
+    const prev = html.style.getPropertyValue('opacity');
+    html.style.opacity = '0.9999';
+    void html.offsetHeight;
+    requestAnimationFrame(() => {
+      html.style.opacity = prev || '';
+    });
+  });
+}
+
 export async function initCapacitor() {
   if (typeof window === 'undefined') return;
 
   try {
-    // Initialize App plugin
     const { App } = await import('@capacitor/app');
-    
-    // Handle app state changes
+
     App.addListener('appStateChange', ({ isActive }) => {
       if (isActive) {
-        console.log('App resumed');
-      } else {
-        console.log('App paused');
+        nudgeWebViewRepaint();
       }
     });
 
-    // Handle back button (Android)
     App.addListener('backButton', ({ canGoBack }) => {
       if (!canGoBack) {
         App.exitApp();
@@ -26,28 +35,7 @@ export async function initCapacitor() {
         window.history.back();
       }
     });
-
-    // Initialize Status Bar
-    const { StatusBar } = await import('@capacitor/status-bar');
-    await StatusBar.setStyle({ style: 'dark' });
-    await StatusBar.setBackgroundColor({ color: '#0a0a0c' });
-
-    // Initialize Splash Screen
-    const { SplashScreen } = await import('@capacitor/splash-screen');
-    await SplashScreen.hide();
-
-    // Initialize Keyboard
-    const { Keyboard } = await import('@capacitor/keyboard');
-    Keyboard.addListener('keyboardWillShow', () => {
-      document.body.classList.add('keyboard-open');
-    });
-    Keyboard.addListener('keyboardWillHide', () => {
-      document.body.classList.remove('keyboard-open');
-    });
-
-    console.log('Capacitor initialized successfully');
   } catch (error) {
-    console.warn('Capacitor initialization error (running in browser?):', error);
+    console.warn('Capacitor App plugin init failed (browser?):', error);
   }
 }
-

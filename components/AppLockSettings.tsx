@@ -11,6 +11,8 @@ const isAndroid = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() 
 
 export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
   const [state, setState] = useState<AppLockState | null>(null);
+  /** Display name per package id (from Android PackageManager). */
+  const [packageLabels, setPackageLabels] = useState<Record<string, string>>({});
   const [apps, setApps] = useState<LauncherAppRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -22,8 +24,20 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       const s = await AppLock.getState();
       const pkgs = Array.isArray(s.packages) ? s.packages : [];
       setState({ ...s, packages: pkgs });
+
+      if (pkgs.length > 0) {
+        const { labels } = await AppLock.getLabelsForPackages({ packages: pkgs });
+        const map: Record<string, string> = {};
+        for (const row of labels) {
+          map[row.packageName] = row.label;
+        }
+        setPackageLabels(map);
+      } else {
+        setPackageLabels({});
+      }
     } catch {
       setState(null);
+      setPackageLabels({});
     }
   }, []);
 
@@ -229,15 +243,19 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                 {state.packages.map((pkg) => (
                   <li
                     key={pkg}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-[var(--card-bg)] border border-theme"
+                    className="flex items-center justify-between p-4 rounded-2xl bg-[var(--card-bg)] border border-theme gap-3"
                   >
-                    <span className="text-xs font-mono truncate pr-2">{pkg}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-bold text-[var(--text-primary)] truncate">
+                        {packageLabels[pkg] ?? pkg}
+                      </div>
+                    </div>
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => removePackage(pkg)}
                       className="p-2 text-red-400 hover:text-red-300 shrink-0"
-                      aria-label={`Remove ${pkg}`}
+                      aria-label={`Remove ${packageLabels[pkg] ?? pkg}`}
                     >
                       <Icons.Close className="w-4 h-4" />
                     </button>

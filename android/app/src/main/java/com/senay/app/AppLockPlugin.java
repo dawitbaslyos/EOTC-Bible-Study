@@ -3,6 +3,7 @@ package com.senay.app;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.provider.Settings;
@@ -111,6 +112,43 @@ public class AppLockPlugin extends Plugin {
         }
         JSObject ret = new JSObject();
         ret.put("apps", jarr);
+        call.resolve(ret);
+    }
+
+    /**
+     * Human-readable app names for locked package ids (uses {@link PackageManager#getApplicationLabel}).
+     */
+    @PluginMethod
+    public void getLabelsForPackages(PluginCall call) {
+        JSArray arr = call.getArray("packages", new JSArray());
+        PackageManager pm = getContext().getPackageManager();
+        JSArray out = new JSArray();
+        if (arr != null) {
+            for (int i = 0; i < arr.length(); i++) {
+                String pkg = null;
+                try {
+                    pkg = arr.getString(i);
+                } catch (Exception ignored) {
+                    continue;
+                }
+                if (TextUtils.isEmpty(pkg)) continue;
+                JSObject row = new JSObject();
+                row.put("packageName", pkg);
+                String label = pkg;
+                try {
+                    ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
+                    CharSequence cs = pm.getApplicationLabel(ai);
+                    if (cs != null && cs.length() > 0) {
+                        label = cs.toString();
+                    }
+                } catch (Exception ignored) {
+                }
+                row.put("label", label);
+                out.put(row);
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("labels", out);
         call.resolve(ret);
     }
 
