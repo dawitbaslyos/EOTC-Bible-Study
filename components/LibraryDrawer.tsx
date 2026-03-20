@@ -1,5 +1,6 @@
 
 import React, { useState, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Icons } from '../constants';
 import { Book, Testament, UserStats, BookProgress } from '../types';
 
@@ -57,11 +58,13 @@ const LibraryDrawer: React.FC<Props> = ({
   const totalReflections = (Object.values(userStats?.studyHistory || {}) as number[]).reduce((a, b) => a + b, 0);
   const activeScrolls = (Object.values(userStats?.bookProgress || {}) as BookProgress[]).filter(p => p.completedChapters.length > 0).length;
 
-  return (
+  // Portal to body so position:fixed is relative to the viewport (not a transformed/padded ancestor).
+  const drawer = (
     <>
       <div 
         className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] transition-opacity duration-500 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
         onClick={onClose}
+        aria-hidden={!isOpen}
       />
       
       <div 
@@ -69,15 +72,16 @@ const LibraryDrawer: React.FC<Props> = ({
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`fixed top-0 left-0 h-full w-full max-w-sm bg-[var(--bg-primary)] border-r border-theme z-[101] overflow-hidden select-none transition-transform duration-500 ease-out`}
+        className={`fixed inset-y-0 left-0 w-full max-w-sm bg-[var(--bg-primary)] border-r border-theme z-[101] overflow-hidden select-none transition-transform duration-500 ease-out`}
         style={{ 
           transform: isOpen ? `translateX(${dragOffset}px)` : `translateX(-100%)`,
           transition: isDragging ? 'none' : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)',
+          minHeight: '100dvh',
         }}
       >
         <div className="flex flex-col h-full">
           {/* User Section */}
-          <div className="p-8 bg-[var(--card-bg)] border-b border-theme relative overflow-hidden">
+          <div className="p-8 pt-[max(2rem,env(safe-area-inset-top,0px))] bg-[var(--card-bg)] border-b border-theme relative overflow-hidden">
             <div className="relative z-10 flex items-center space-x-4 mb-6">
                <div className="w-16 h-16 rounded-2xl border border-[var(--gold)]/30 p-1 flex items-center justify-center bg-[var(--bg-primary)] shadow-lg overflow-hidden">
                   {userProfile?.photoURL && !imageError ? (
@@ -154,6 +158,12 @@ const LibraryDrawer: React.FC<Props> = ({
       </div>
     </>
   );
+
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(drawer, document.body);
 };
 
 export default LibraryDrawer;
