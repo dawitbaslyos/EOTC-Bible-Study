@@ -117,7 +117,8 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
 
       <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
         Locked apps show a Bible gate from <span className="font-mono">bible-content.json</span> (bundled with Senay).
-        Your place advances each time you finish the gate. Choose one verse per lock or a full chapter below.
+        Your place advances each time you finish the gate. Choose <strong>five verses</strong> per lock or a{' '}
+        <strong>full chapter</strong> below — those are the only two sizes.
       </p>
 
       {state === null && (
@@ -168,9 +169,9 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                     : 'border-theme bg-[var(--card-bg)]'
                 }`}
               >
-                <div className="text-xs font-bold">Paragraph</div>
+                <div className="text-xs font-bold">5 paragraphs</div>
                 <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
-                  One verse at a time; order follows the Bible file
+                  Five verses in order from the Bible file (one gate)
                 </div>
               </button>
               <button
@@ -183,9 +184,9 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                     : 'border-theme bg-[var(--card-bg)]'
                 }`}
               >
-                <div className="text-xs font-bold">Chapter</div>
+                <div className="text-xs font-bold">1 chapter</div>
                 <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
-                  Whole chapter each time; next lock continues with the next chapter
+                  Whole chapter each time; next lock starts the next chapter
                 </div>
               </button>
             </div>

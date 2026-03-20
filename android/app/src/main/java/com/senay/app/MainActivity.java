@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(AppLockPlugin.class);
+        registerPlugin(SenayPermissionsPlugin.class);
         super.onCreate(savedInstanceState);
         WidgetAlarmScheduler.startIfWidgetsExist(this);
     }

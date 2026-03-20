@@ -7,11 +7,10 @@ import java.util.Locale;
 public final class EthiopianDateHelper {
 
     private static final String[] ETHIOPIAN_MONTHS = {
-            "Meskerem", "Tikimt", "Hidar", "Tahsas", "Tir", "Yekatit",
-            "Megabit", "Miazia", "Ginbot", "Sene", "Hamle", "Nehasse", "Pagumē"
+           "መስከረም", "ጥቅምት", "ኅዳር", "ታኅሣሥ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ", "ነሐሴ", "ጳጉሜ"
     };
 
-    private static final String[] YEAR_NAMES = {"John", "Matthew", "Mark", "Luke"};
+    private static final String[] YEAR_NAMES = {"ዮሐንስ", "ማቴዎስ", "ማርቆስ", "ሉቃስ"};
 
     private EthiopianDateHelper() {}
 

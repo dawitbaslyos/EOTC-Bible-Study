@@ -8,11 +8,10 @@ export interface EthiopianDate {
 }
 
 const ETHIOPIAN_MONTHS = [
-  "Meskerem", "Tikimt", "Hidar", "Tahsas", "Tir", "Yekatit", 
-  "Megabit", "Miazia", "Ginbot", "Sene", "Hamle", "Nehasse", "Pagumē"
+ "መስከረም", "ጥቅምት", "ኅዳር", "ታኅሣሥ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ", "ነሐሴ", "ጳጉሜ"
 ];
 
-const YEAR_NAMES = ["John", "Matthew", "Mark", "Luke"]; // Matthew is 1, Mark 2, Luke 3, John 0/4
+const YEAR_NAMES = ["ዮሐንስ", "ማቴዎስ", "ማርቆስ", "ሉቃስ"]; // Matthew is 1, Mark 2, Luke 3, John 0/4
 
 /**
  * A simplified Gregorian to Ethiopian converter.
@@ -33,7 +32,7 @@ export function getEthiopianDate(date: Date = new Date()): EthiopianDate {
   // Calculate the cycle name (Matthew, Mark, Luke, John)
   // The year cycle follows: (eYear + 1) % 4
   const cycleIndex = (eYear + 1) % 4;
-  const yearName = `Year of St. ${YEAR_NAMES[cycleIndex]}`;
+  const yearName = `ዘመነ ${YEAR_NAMES[cycleIndex]}`;
 
   // Find the start of the Ethiopian year in Gregorian time
   // Meskerem 1 is usually Sept 11, but Sept 12 if the previous Ethiopian year was a leap year (Luke)

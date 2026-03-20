@@ -215,7 +215,14 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                     Runnable updateOpen = () -> updateOpenButtonState(scroll, openApp, hint);
                     openApp.setText(getString(R.string.app_lock_open_app_fmt, appLabelFinal));
                     openApp.setOnClickListener(v2 -> {
-                        GateBibleProgress.advanceAfterCompletion(ReadingGateAccessibilityService.this);
+                        if ("chapter".equals(AppLockPrefs.getMode(ReadingGateAccessibilityService.this))) {
+                            GateBibleProgress.advanceChapterGate(ReadingGateAccessibilityService.this);
+                        } else {
+                            int steps = seg != null && seg.versesInGate > 0
+                                    ? seg.versesInGate
+                                    : BibleGateNavigator.PARAGRAPH_GATE_VERSE_COUNT;
+                            GateBibleProgress.advanceParagraphGate(ReadingGateAccessibilityService.this, steps);
+                        }
                         AppLockPrefs.recordGateCompletion(ReadingGateAccessibilityService.this, blockedPackage);
                         removeOverlay();
                     });
@@ -265,7 +272,7 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
         if (chapterMode) {
             return BibleGateNavigator.loadChapter(this, b, c);
         }
-        return BibleGateNavigator.loadParagraph(this, b, c, v);
+        return BibleGateNavigator.loadFiveVerses(this, b, c, v);
     }
 
     private void updateOpenButtonState(ScrollView scroll, Button openApp, TextView hint) {

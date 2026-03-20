@@ -13,12 +13,15 @@ interface Props {
   ritualReminderTimes?: UserStats['ritualReminderTimes'];
   setRitualReminderTimes: (t: UserStats['ritualReminderTimes']) => void;
   onLogout: () => void;
+  /** Android: re-open native permission / alarm setup */
+  onOpenAndroidPermissions?: () => void;
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 const SettingsPage: React.FC<Props> = ({ 
-  onClose, theme, setTheme, rituals, setRituals, ritualReminderTimes, setRitualReminderTimes, onLogout
+  onClose, theme, setTheme, rituals, setRituals, ritualReminderTimes, setRitualReminderTimes, onLogout,
+  onOpenAndroidPermissions
 }) => {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
@@ -131,6 +134,25 @@ const SettingsPage: React.FC<Props> = ({
         </section>
 
         <AppLockSettings />
+
+        {onOpenAndroidPermissions && (
+          <section className="space-y-4">
+            <div className="flex items-center space-x-3 text-[var(--gold)]">
+              <Icons.Bell className="w-5 h-5" />
+              <h3 className="uppercase text-xs font-black tracking-[0.2em]">Android permissions</h3>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              Open the system prompts again for notifications, microphone, and exact alarms (widget &amp; reminders).
+            </p>
+            <button
+              type="button"
+              onClick={onOpenAndroidPermissions}
+              className="w-full p-5 rounded-3xl border-2 border-theme bg-[var(--card-bg)] text-left text-sm font-bold text-[var(--text-primary)] hover:border-[var(--gold)]/40 transition-all"
+            >
+              Review permissions &amp; alarms
+            </button>
+          </section>
+        )}
 
         {/* Account Section */}
         <section className="pt-10 border-t border-theme">

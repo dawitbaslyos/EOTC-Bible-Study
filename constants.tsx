@@ -2,8 +2,7 @@
 import React from 'react';
 
 export const ETHIOPIAN_MONTHS = [
-  "Meskerem", "Tikimt", "Hidar", "Tahsas", "Tir", "Yekatit", 
-  "Megabit", "Miazia", "Ginbot", "Sene", "Hamle", "Nehasse", "Pagumē"
+  "መስከረም", "ጥቅምት", "ኅዳር", "ታኅሣሥ", "ጥር", "የካቲት", "መጋቢት", "ሚያዝያ", "ግንቦት", "ሰኔ", "ሐምሌ", "ነሐሴ", "ጳጉሜ"
 ];
 
 export const WEEK_DAYS = ["M", "T", "W", "T", "F", "S", "S"];

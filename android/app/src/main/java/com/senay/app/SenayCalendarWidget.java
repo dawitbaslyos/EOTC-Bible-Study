@@ -15,13 +15,9 @@ import android.widget.RemoteViews;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.Locale;
-
 /**
- * Home-screen widget: Ethiopian date and local time update every minute via {@link WidgetAlarmScheduler}.
- * Saint / holiday / streak come from the web app's {@code widget_snapshot} when available.
+ * Home-screen widget: Ethiopian date from {@link EthiopianDateHelper}; saint/holiday/streak from
+ * {@code widget_snapshot}. Refreshes on schedule via {@link WidgetAlarmScheduler}.
  */
 public class SenayCalendarWidget extends AppWidgetProvider {
 
@@ -81,9 +77,6 @@ public class SenayCalendarWidget extends AppWidgetProvider {
         String dateLabel = eth.dateLabel();
         String yearLabel = eth.yearName;
 
-        SimpleDateFormat timeFormat = new SimpleDateFormat("h:mm a", Locale.getDefault());
-        String timeStr = timeFormat.format(new Date());
-
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String snapshotJson = prefs.getString(KEY_SNAPSHOT, null);
 
@@ -102,7 +95,6 @@ public class SenayCalendarWidget extends AppWidgetProvider {
 
         views.setTextViewText(R.id.widget_date, dateLabel);
         views.setTextViewText(R.id.widget_year, yearLabel);
-        views.setTextViewText(R.id.widget_time, timeStr);
         views.setTextViewText(R.id.widget_saint, saintOrHoliday);
 
         String streakText = streak > 0 ? "\uD83D\uDD6F " + streak + " days" : "";
@@ -119,15 +111,12 @@ public class SenayCalendarWidget extends AppWidgetProvider {
 
         if (area > 0 && area < 4000) {
             views.setViewVisibility(R.id.widget_year, View.GONE);
-            views.setViewVisibility(R.id.widget_time, View.GONE);
             views.setViewVisibility(R.id.widget_streak, View.GONE);
         } else if (area > 0 && area < 9000) {
             views.setViewVisibility(R.id.widget_year, View.VISIBLE);
-            views.setViewVisibility(R.id.widget_time, View.VISIBLE);
             views.setViewVisibility(R.id.widget_streak, isPortrait ? View.VISIBLE : View.GONE);
         } else {
             views.setViewVisibility(R.id.widget_year, View.VISIBLE);
-            views.setViewVisibility(R.id.widget_time, View.VISIBLE);
             views.setViewVisibility(R.id.widget_streak, View.VISIBLE);
         }
 

@@ -17,6 +17,9 @@ import {
   syncRitualRemindersFromStats,
   rescheduleOpenAppReminder
 } from './utils/nativeNotifications';
+import { pickDailyQuoteFromBible } from './utils/dailyQuoteFromBible';
+import { isAndroidNative } from './utils/appPermissions';
+import PermissionSetupModal, { ANDROID_PERMISSIONS_DONE_KEY } from './components/PermissionSetupModal';
 interface UserProfile {
   name: string;
   email: string;
@@ -44,7 +47,9 @@ const App: React.FC = () => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem('senay_theme') as Theme) || 'dark');
-  
+  const [androidPermissionOpen, setAndroidPermissionOpen] = useState(false);
+  const [androidPermissionManual, setAndroidPermissionManual] = useState(false);
+
   const cloudUid = user?.provider === 'guest' ? null : (user?.uid || null);
   const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
@@ -83,10 +88,9 @@ const App: React.FC = () => {
 
     const fetchData = async () => {
       try {
-        const [litRes, bibleRes, quotesRes, booksRes] = await Promise.all([
+        const [litRes, bibleRes, booksRes] = await Promise.all([
           fetch('./data/wudase-liturgy.json'),
           fetch('./data/bible-content.json'),
-          fetch('./data/quotes.json'),
           fetch('./data/80-weahadu.json')
         ]);
 
@@ -121,15 +125,12 @@ const App: React.FC = () => {
           });
 
           setAllBooks(mergedBooks);
+
+          const daily = pickDailyQuoteFromBible(bibleJson);
+          if (daily) setQuote(daily);
         } else if (weahaduJson) {
           // Fallback: if bible content fails to load, show weahadu books.
           setAllBooks(weahaduJson);
-        }
-        if (quotesRes.ok) {
-          const quotes = await quotesRes.json();
-          if (Array.isArray(quotes) && quotes.length > 0) {
-            setQuote(quotes[new Date().getDate() % quotes.length]);
-          }
         }
       } catch (err) {
         console.error("Data loading error:", err);
@@ -138,6 +139,15 @@ const App: React.FC = () => {
 
     fetchData();
   }, []);
+
+  // Android: one-time permission sheet (native Allow dialogs) after login.
+  useEffect(() => {
+    if (!user) return;
+    if (!isAndroidNative()) return;
+    if (localStorage.getItem(ANDROID_PERMISSIONS_DONE_KEY)) return;
+    setAndroidPermissionManual(false);
+    setAndroidPermissionOpen(true);
+  }, [user?.uid]);
 
   const handleOnboardingComplete = (rituals: RitualTime[]) => {
     setHasSeenOnboarding(true);
@@ -313,6 +323,14 @@ const App: React.FC = () => {
             ritualReminderTimes={stats.ritualReminderTimes}
             setRitualReminderTimes={(t) => saveStats({ ...stats, ritualReminderTimes: t })}
             onLogout={handleLogout}
+            onOpenAndroidPermissions={
+              isAndroidNative()
+                ? () => {
+                    setAndroidPermissionManual(true);
+                    setAndroidPermissionOpen(true);
+                  }
+                : undefined
+            }
           />
         )}
 
@@ -346,6 +364,17 @@ const App: React.FC = () => {
 
         <NotificationCenter isOpen={isNotificationOpen} notifications={notifications} onClose={() => setIsNotificationOpen(false)} onMarkRead={markAsRead} onClearAll={clearAll} />
         <NotificationToast notification={activeToast} onDismiss={dismissToast} />
+
+        {androidPermissionOpen && (
+          <PermissionSetupModal
+            stats={stats}
+            isManualEntry={androidPermissionManual}
+            onFinished={() => {
+              setAndroidPermissionOpen(false);
+              setAndroidPermissionManual(false);
+            }}
+          />
+        )}
       </div>
     </div>
   );

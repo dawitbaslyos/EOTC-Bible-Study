@@ -5,7 +5,7 @@ import android.content.SharedPreferences;
 
 /**
  * Saved position in bible-content.json for the focus-lock reading gate.
- * Paragraph mode: one verse at a time (flat index within chapter).
+ * Paragraph mode: each gate shows up to {@link BibleGateNavigator#PARAGRAPH_GATE_VERSE_COUNT} consecutive verses.
  * Chapter mode: full chapter at a time.
  */
 public final class GateBibleProgress {
@@ -41,32 +41,41 @@ public final class GateBibleProgress {
     }
 
     /**
-     * After user finishes reading on the overlay and opens the locked app.
+     * After user finishes reading a chapter gate and opens the locked app.
      */
-    public static void advanceAfterCompletion(Context ctx) {
+    public static void advanceChapterGate(Context ctx) {
         int b = getBookIndex(ctx);
         int c = getChapterIndex(ctx);
-        int v = getVerseFlatIndex(ctx);
-        String mode = AppLockPrefs.getMode(ctx);
-
-        if ("chapter".equals(mode)) {
-            if (BibleGateNavigator.hasChapter(ctx, b, c + 1)) {
-                setProgress(ctx, b, c + 1, 0);
-            } else if (BibleGateNavigator.hasChapter(ctx, b + 1, 0)) {
-                setProgress(ctx, b + 1, 0, 0);
-            } else {
-                setProgress(ctx, 0, 0, 0);
-            }
+        if (BibleGateNavigator.hasChapter(ctx, b, c + 1)) {
+            setProgress(ctx, b, c + 1, 0);
+        } else if (BibleGateNavigator.hasChapter(ctx, b + 1, 0)) {
+            setProgress(ctx, b + 1, 0, 0);
         } else {
-            if (BibleGateNavigator.hasVerse(ctx, b, c, v + 1)) {
-                setProgress(ctx, b, c, v + 1);
-            } else if (BibleGateNavigator.hasVerse(ctx, b, c + 1, 0)) {
-                setProgress(ctx, b, c + 1, 0);
-            } else if (BibleGateNavigator.hasVerse(ctx, b + 1, 0, 0)) {
-                setProgress(ctx, b + 1, 0, 0);
-            } else {
-                setProgress(ctx, 0, 0, 0);
-            }
+            setProgress(ctx, 0, 0, 0);
         }
+    }
+
+    /**
+     * After user finishes a paragraph (multi-verse) gate. {@code verseSteps} must match how many
+     * verses were shown ({@link BibleGateNavigator.Segment#versesInGate}).
+     */
+    public static void advanceParagraphGate(Context ctx, int verseSteps) {
+        if (verseSteps <= 0) {
+            verseSteps = BibleGateNavigator.PARAGRAPH_GATE_VERSE_COUNT;
+        }
+        int bi = getBookIndex(ctx);
+        int ci = getChapterIndex(ctx);
+        int vi = getVerseFlatIndex(ctx);
+        for (int step = 0; step < verseSteps; step++) {
+            int[] next = BibleGateNavigator.nextVersePosition(ctx, bi, ci, vi);
+            if (next == null) {
+                setProgress(ctx, 0, 0, 0);
+                return;
+            }
+            bi = next[0];
+            ci = next[1];
+            vi = next[2];
+        }
+        setProgress(ctx, bi, ci, vi);
     }
 }

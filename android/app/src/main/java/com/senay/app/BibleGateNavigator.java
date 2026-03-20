@@ -1,6 +1,7 @@
 package com.senay.app;
 
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.JsonReader;
 
 import java.io.IOException;
@@ -9,10 +10,13 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 
 /**
- * Streams {@code public/data/bible-content.json} from assets — one verse (paragraph mode)
- * or one full chapter (chapter mode).
+ * Streams {@code public/data/bible-content.json} from assets — one verse, five consecutive verses
+ * (paragraph / “five paragraphs” gate mode), or one full chapter (chapter mode).
  */
 public final class BibleGateNavigator {
+
+    /** Verses per gate when not in chapter mode (was 1; users asked for 5). */
+    public static final int PARAGRAPH_GATE_VERSE_COUNT = 5;
 
     public static final String ASSET_PATH = "public/data/bible-content.json";
 
@@ -20,6 +24,8 @@ public final class BibleGateNavigator {
         public String title = "";
         public String subtitle = "";
         public String html = "";
+        /** Paragraph gate: verses shown (1–5). Chapter gate: 0. */
+        public int versesInGate = 1;
     }
 
     private static class VerseParsed {
@@ -65,6 +71,75 @@ public final class BibleGateNavigator {
     public static boolean hasVerse(Context ctx, int bookIndex, int chapterIndex, int verseFlat) {
         Segment s = loadParagraph(ctx, bookIndex, chapterIndex, verseFlat);
         return s != null && s.html != null && !s.html.isEmpty();
+    }
+
+    /**
+     * Next verse index after (book, chapter, verseFlat), or null if at end of Bible.
+     */
+    public static int[] nextVersePosition(Context ctx, int bookIndex, int chapterIndex, int verseFlat) {
+        if (hasVerse(ctx, bookIndex, chapterIndex, verseFlat + 1)) {
+            return new int[]{bookIndex, chapterIndex, verseFlat + 1};
+        }
+        if (hasVerse(ctx, bookIndex, chapterIndex + 1, 0)) {
+            return new int[]{bookIndex, chapterIndex + 1, 0};
+        }
+        if (hasVerse(ctx, bookIndex + 1, 0, 0)) {
+            return new int[]{bookIndex + 1, 0, 0};
+        }
+        return null;
+    }
+
+    /**
+     * Paragraph gate: up to {@link #PARAGRAPH_GATE_VERSE_COUNT} consecutive verses in one scroll.
+     */
+    public static Segment loadFiveVerses(Context ctx, int bookIndex, int chapterIndex, int verseFlat) {
+        StringBuilder html = new StringBuilder();
+        int b = bookIndex;
+        int c = chapterIndex;
+        int v = verseFlat;
+        Segment first = null;
+        Segment last = null;
+        int count = 0;
+        for (int i = 0; i < PARAGRAPH_GATE_VERSE_COUNT; i++) {
+            if (!hasVerse(ctx, b, c, v)) {
+                break;
+            }
+            Segment one = loadParagraph(ctx, b, c, v);
+            if (one == null || TextUtils.isEmpty(one.html)) {
+                break;
+            }
+            if (first == null) {
+                first = one;
+            }
+            last = one;
+            html.append(one.html);
+            count++;
+            if (i == PARAGRAPH_GATE_VERSE_COUNT - 1) {
+                break;
+            }
+            int[] next = nextVersePosition(ctx, b, c, v);
+            if (next == null) {
+                break;
+            }
+            b = next[0];
+            c = next[1];
+            v = next[2];
+        }
+        if (first == null || count == 0) {
+            return null;
+        }
+        Segment s = new Segment();
+        s.title = first.title;
+        if (count == 1) {
+            s.subtitle = first.subtitle;
+        } else if (last != null && !TextUtils.isEmpty(first.subtitle) && !TextUtils.isEmpty(last.subtitle)) {
+            s.subtitle = first.subtitle + " … +" + (count - 1) + " more";
+        } else {
+            s.subtitle = count + " verses";
+        }
+        s.html = html.toString();
+        s.versesInGate = count;
+        return s;
     }
 
     public static boolean hasChapter(Context ctx, int bookIndex, int chapterIndex) {
@@ -183,6 +258,7 @@ public final class BibleGateNavigator {
                                     s.title = bookName;
                                     s.subtitle = "Chapter " + chapterNum + " · Verse " + vp.number;
                                     s.html = vp.toHtml();
+                                    s.versesInGate = 1;
                                     return s;
                                 }
                                 skipVerse(r);
@@ -247,6 +323,7 @@ public final class BibleGateNavigator {
         s.title = bookName;
         s.subtitle = "Chapter " + chapterNum;
         s.html = html.toString();
+        s.versesInGate = 0;
         return s;
     }
 
