@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Kept in sync with default widget_senay_calendar (small-screen override). -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="10dp"
+    android:padding="6dp"
     android:background="@drawable/widget_background">
 
     <LinearLayout
@@ -11,78 +12,91 @@
         android:layout_height="match_parent"
         android:layout_gravity="center"
         android:orientation="vertical"
-        android:gravity="center_horizontal"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp">
+        android:gravity="center"
+        android:paddingStart="6dp"
+        android:paddingEnd="6dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp">
 
         <TextView
-            android:id="@+id/widget_date"
+            android:id="@+id/widget_month"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="4"
-            android:gravity="center"
+            android:layout_height="wrap_content"
+            android:gravity="center_horizontal"
             android:textAlignment="center"
-            android:text="Meskerem 1"
-            android:textColor="#D4AF37"
-            android:textSize="16sp"
-            android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="10sp"
-            android:autoSizeMaxTextSize="38sp"
-            android:autoSizeStepGranularity="1sp"
+            android:text="መጋቢት"
+            android:textColor="@color/widget_gold"
+            android:textSize="18sp"
+            android:letterSpacing="0.04"
             android:textStyle="bold"
-            android:maxLines="2"
+            android:maxLines="1"
             android:ellipsize="end" />
 
         <TextView
-            android:id="@+id/widget_year"
+            android:id="@+id/widget_day"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:paddingTop="0dp"
+            android:paddingBottom="0dp"
             android:gravity="center"
             android:textAlignment="center"
-            android:text=""
-            android:textColor="#888888"
-            android:textSize="9sp"
-            android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="7sp"
-            android:autoSizeMaxTextSize="16sp"
-            android:autoSizeStepGranularity="1sp"
-            android:maxLines="2"
+            android:text="12"
+            android:textColor="#FFFFFFFF"
+            android:textSize="40sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="none" />
+
+        <TextView
+            android:id="@+id/widget_weekday"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="0dp"
+            android:paddingTop="1dp"
+            android:gravity="center_horizontal"
+            android:textAlignment="center"
+            android:text="ቅዳሜ"
+            android:textColor="#E8E8E8"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
             android:ellipsize="end" />
+
+        <ImageView
+            android:id="@+id/widget_divider"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginTop="5dp"
+            android:layout_marginBottom="2dp"
+            android:background="#33FFFFFF"
+            android:contentDescription="@null"
+            android:importantForAccessibility="no" />
 
         <TextView
             android:id="@+id/widget_saint"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="3"
+            android:layout_height="wrap_content"
             android:gravity="center"
             android:textAlignment="center"
-            android:text="Three Saints"
-            android:textColor="#FFFFFF"
+            android:text=""
+            android:textColor="#CCCCCC"
             android:textSize="10sp"
-            android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="8sp"
-            android:autoSizeMaxTextSize="18sp"
-            android:autoSizeStepGranularity="1sp"
             android:maxLines="3"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:lineSpacingExtra="1dp" />
 
         <TextView
             android:id="@+id/widget_streak"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="2"
-            android:gravity="center"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:gravity="center_horizontal"
             android:textAlignment="center"
             android:text=""
-            android:textColor="#D4AF37"
+            android:textColor="@color/widget_gold_soft"
             android:textSize="9sp"
-            android:autoSizeTextType="uniform"
-            android:autoSizeMinTextSize="7sp"
-            android:autoSizeMaxTextSize="16sp"
-            android:autoSizeStepGranularity="1sp"
             android:maxLines="2"
             android:ellipsize="end" />
-
     </LinearLayout>
 </FrameLayout>

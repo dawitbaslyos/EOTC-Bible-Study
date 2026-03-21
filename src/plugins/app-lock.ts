@@ -21,6 +21,12 @@ export interface PackageLabelRow {
   label: string;
 }
 
+export interface GateCompletionItem {
+  bookId: string;
+  chapter: number;
+  mode: AppLockMode;
+}
+
 export interface AppLockPlugin {
   getState(): Promise<AppLockState>;
   setEnabled(options: { enabled: boolean }): Promise<void>;
@@ -30,6 +36,8 @@ export interface AppLockPlugin {
   getLauncherApps(): Promise<{ apps: LauncherAppRow[] }>;
   /** Resolve display names for package ids (Android). */
   getLabelsForPackages(options: { packages: string[] }): Promise<{ labels: PackageLabelRow[] }>;
+  /** Pop gate readings completed in the native overlay (queued until JS consumes). */
+  consumePendingGateCompletions(): Promise<{ items: GateCompletionItem[] }>;
 }
 
 export const AppLock = registerPlugin<AppLockPlugin>('AppLock', {
@@ -49,6 +57,7 @@ export const AppLock = registerPlugin<AppLockPlugin>('AppLock', {
       getLauncherApps: async () => ({ apps: [] }),
       getLabelsForPackages: async ({ packages }) => ({
         labels: packages.map((packageName) => ({ packageName, label: packageName }))
-      })
+      }),
+      consumePendingGateCompletions: async () => ({ items: [] })
     }) as AppLockPlugin
 });

@@ -1,5 +1,5 @@
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { UserStats, BookProgress, FastingSeason, EthiopianHoliday } from '../types';
 import { getEthiopianDate } from '../utils/ethiopianCalendar';
 import { db } from '../firestoreClient';
@@ -21,6 +21,33 @@ export const getLocalDateString = (date: Date) => {
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 };
+
+/** Streak + daily study count + totalSessions (shared by in-app chapter complete & focus-lock gate). */
+function incrementStudySessionForDay(prev: UserStats): UserStats {
+  const today = new Date();
+  const todayStr = getLocalDateString(today);
+  const newStats: UserStats = {
+    ...prev,
+    studyHistory: { ...prev.studyHistory },
+    bookProgress: { ...prev.bookProgress }
+  };
+  if (newStats.lastStudyDate !== todayStr) {
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+    if (!newStats.lastStudyDate) {
+      newStats.streak = 0;
+    } else if (newStats.lastStudyDate === yesterdayStr) {
+      newStats.streak = (newStats.streak ?? 0) + 1;
+    } else {
+      newStats.streak = 0;
+    }
+    newStats.lastStudyDate = todayStr;
+  }
+  newStats.studyHistory[todayStr] = (newStats.studyHistory[todayStr] || 0) + 1;
+  newStats.totalSessions = (newStats.totalSessions || 0) + 1;
+  return newStats;
+}
 
 export const useProgress = (cloudUid?: string | null) => {
   const [stats, setStats] = useState<UserStats>(initialStats);
@@ -163,42 +190,13 @@ export const useProgress = (cloudUid?: string | null) => {
   };
 
   const completeChapter = (bookId: string, chapter: number) => {
-    const today = new Date();
-    const todayStr = getLocalDateString(today);
-    
-    const newStats: UserStats = { 
-      ...stats,
-      studyHistory: { ...stats.studyHistory },
-      bookProgress: { ...stats.bookProgress }
-    };
-    
-    // Streak logic refined: Starts incrementing on the NEXT day
-    if (newStats.lastStudyDate !== todayStr) {
-      const yesterday = new Date(today);
-      yesterday.setDate(today.getDate() - 1);
-      const yesterdayStr = getLocalDateString(yesterday);
-      
-      if (!newStats.lastStudyDate) {
-        // First day ever
-        newStats.streak = 0; 
-      } else if (newStats.lastStudyDate === yesterdayStr) {
-        // Consecutive returning day
-        newStats.streak += 1;
-      } else {
-        // Broke streak
-        newStats.streak = 0;
-      }
-      newStats.lastStudyDate = todayStr;
-    }
+    let newStats = incrementStudySessionForDay(stats);
 
-    newStats.studyHistory[todayStr] = (newStats.studyHistory[todayStr] || 0) + 1;
-    newStats.totalSessions = (newStats.totalSessions || 0) + 1;
-    
     if (bookId !== 'wudase') {
-      const currentBookProgress = newStats.bookProgress[bookId] || { 
-        bookId, 
-        completedChapters: [], 
-        lastAccessed: Date.now() 
+      const currentBookProgress = newStats.bookProgress[bookId] || {
+        bookId,
+        completedChapters: [],
+        lastAccessed: Date.now()
       };
 
       const updatedChapters = currentBookProgress.completedChapters.includes(chapter)
@@ -213,9 +211,48 @@ export const useProgress = (cloudUid?: string | null) => {
     }
 
     saveStats(newStats);
-    // Sync once per day: this is where streak + book progress actually changes.
     maybeSyncToCloudOncePerDay(newStats).catch(() => {});
   };
+
+  /** Android focus-lock overlay: merge completed readings into heatmap / streak / book progress. */
+  const applyGateCompletionsFromLock = useCallback(
+    (items: { bookId: string; chapter: number; mode: string }[]) => {
+      if (!items.length) return;
+      setStats((prev) => {
+        let next = prev;
+        for (const it of items) {
+          if (!it.bookId) continue;
+          next = incrementStudySessionForDay(next);
+          next = {
+            ...next,
+            gateLockReadingsCompleted: (next.gateLockReadingsCompleted || 0) + 1
+          };
+          if (it.mode === 'chapter' && it.bookId !== 'wudase') {
+            const currentBookProgress = next.bookProgress[it.bookId] || {
+              bookId: it.bookId,
+              completedChapters: [],
+              lastAccessed: Date.now()
+            };
+            const updatedChapters = currentBookProgress.completedChapters.includes(it.chapter)
+              ? currentBookProgress.completedChapters
+              : [...currentBookProgress.completedChapters, it.chapter].sort((a, b) => a - b);
+            next.bookProgress = {
+              ...next.bookProgress,
+              [it.bookId]: {
+                ...currentBookProgress,
+                completedChapters: updatedChapters,
+                lastAccessed: Date.now()
+              }
+            };
+          }
+        }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+        maybeSyncToCloudOncePerDay(next).catch(() => {});
+        return next;
+      });
+    },
+    [cloudUid, localReady, cloudHydrated]
+  );
 
   const getNextChapter = (bookId: string): number => {
     const progress = stats.bookProgress[bookId];
@@ -293,6 +330,7 @@ export const useProgress = (cloudUid?: string | null) => {
   return { 
     stats, 
     completeChapter, 
+    applyGateCompletionsFromLock,
     getNextChapter, 
     getHeatmapData, 
     updateLastAccessed,

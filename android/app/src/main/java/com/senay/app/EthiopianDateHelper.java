@@ -46,7 +46,7 @@ public final class EthiopianDateHelper {
 
         int cycleIndex = (eYear + 1) % 4;
         if (cycleIndex < 0) cycleIndex += 4;
-        String yearName = "Year of St. " + YEAR_NAMES[cycleIndex];
+        String yearName = "ዘመነ " + YEAR_NAMES[cycleIndex];
 
         boolean isPreviousYearLeap = (eYear % 4) == 3;
         int newYearDay = isPreviousYearLeap ? 12 : 11;
@@ -77,5 +77,27 @@ public final class EthiopianDateHelper {
 
     public static EthiopianDate getEthiopianDateNow() {
         return getEthiopianDate(Calendar.getInstance(Locale.getDefault()));
+    }
+
+    /** Local weekday name in አማርኛ (matches common Ethiopian calendar apps). */
+    public static String weekdayNameAmharic(Calendar cal) {
+        switch (cal.get(Calendar.DAY_OF_WEEK)) {
+            case Calendar.SUNDAY:
+                return "እሑድ";
+            case Calendar.MONDAY:
+                return "ሰኞ";
+            case Calendar.TUESDAY:
+                return "ማክሰኞ";
+            case Calendar.WEDNESDAY:
+                return "ረቡዕ";
+            case Calendar.THURSDAY:
+                return "ሐሙስ";
+            case Calendar.FRIDAY:
+                return "ዓርብ";
+            case Calendar.SATURDAY:
+                return "ቅዳሜ";
+            default:
+                return "";
+        }
     }
 }

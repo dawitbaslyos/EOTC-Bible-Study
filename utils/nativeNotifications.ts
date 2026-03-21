@@ -39,9 +39,9 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
         title: 'Daily Senay time',
         body: 'Return to your prayers and readings.',
         schedule: {
-          repeats: true,
           every: 'day',
-          on: { hour, minute }
+          on: { hour, minute },
+          allowWhileIdle: true
         }
       }
     ]
@@ -124,7 +124,7 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
     largeBody?: string;
     summaryText?: string;
     channelId: string;
-    schedule: { repeats: true; every: 'day'; on: { hour: number; minute: number } };
+    schedule: { every: 'day'; on: { hour: number; minute: number }; allowWhileIdle: boolean };
   }[] = [];
 
   const pick = (r: RitualTime, defaults: { hour: number; minute: number }) => {
@@ -144,7 +144,7 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
       largeBody: 'Time for your morning reading and prayer. Open Senay to continue.',
       summaryText: 'Morning routine',
       channelId: PRAYER_CHANNEL_ID,
-      schedule: { repeats: true, every: 'day', on: { hour: t.hour, minute: t.minute } }
+      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true }
     });
   }
 
@@ -157,7 +157,7 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
       largeBody: 'Evening routine reminder. Open Senay to continue your readings.',
       summaryText: 'Evening routine',
       channelId: PRAYER_CHANNEL_ID,
-      schedule: { repeats: true, every: 'day', on: { hour: t.hour, minute: t.minute } }
+      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true }
     });
   }
 

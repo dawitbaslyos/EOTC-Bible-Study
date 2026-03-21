@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const [androidPermissionManual, setAndroidPermissionManual] = useState(false);
 
   const cloudUid = user?.provider === 'guest' ? null : (user?.uid || null);
-  const { stats, completeChapter, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
+  const { stats, completeChapter, applyGateCompletionsFromLock, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
 
   const availableBooks = useMemo(() => {
@@ -191,6 +191,40 @@ const App: React.FC = () => {
     JSON.stringify(stats.ritualReminderTimes ?? {})
   ]);
 
+  // Android: merge focus-lock overlay readings into heatmap / streak when app returns to foreground.
+  useEffect(() => {
+    if (!isAndroidNative()) return;
+    let cancelled = false;
+    let removeListener: (() => void) | undefined;
+
+    void (async () => {
+      try {
+        const [{ App }, { AppLock }] = await Promise.all([
+          import('@capacitor/app'),
+          import('./src/plugins/app-lock')
+        ]);
+        if (cancelled) return;
+        const handle = await App.addListener('appStateChange', async ({ isActive }) => {
+          if (!isActive) return;
+          try {
+            const { items } = await AppLock.consumePendingGateCompletions();
+            if (items?.length) applyGateCompletionsFromLock(items);
+          } catch {
+            /* ignore */
+          }
+        });
+        removeListener = () => handle.remove();
+      } catch {
+        /* Capacitor unavailable */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      removeListener?.();
+    };
+  }, [applyGateCompletionsFromLock]);
+
   // Gentle “open Senay” reminder after a few days away; reset whenever app is visible.
   useEffect(() => {
     if (!user || !hasSeenOnboarding) return;
@@ -315,7 +349,10 @@ const App: React.FC = () => {
 
         {phase === AppPhase.SETTINGS && (
           <SettingsPage 
-            onClose={() => goToPhase(AppPhase.DASHBOARD)}
+            onClose={() => {
+              syncRitualRemindersFromStats(stats).catch(() => {});
+              goToPhase(AppPhase.DASHBOARD);
+            }}
             theme={theme}
             setTheme={setTheme}
             rituals={stats.preferredRituals || ['day']}

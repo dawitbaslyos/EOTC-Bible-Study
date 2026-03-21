@@ -17,6 +17,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -215,6 +217,22 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                     Runnable updateOpen = () -> updateOpenButtonState(scroll, openApp, hint);
                     openApp.setText(getString(R.string.app_lock_open_app_fmt, appLabelFinal));
                     openApp.setOnClickListener(v2 -> {
+                        try {
+                            int b = GateBibleProgress.getBookIndex(ReadingGateAccessibilityService.this);
+                            int c = GateBibleProgress.getChapterIndex(ReadingGateAccessibilityService.this);
+                            String bookId = BibleGateNavigator.getBookShortNameEn(
+                                    ReadingGateAccessibilityService.this, b);
+                            int chap = BibleGateNavigator.getChapterNumberAt(
+                                    ReadingGateAccessibilityService.this, b, c);
+                            String mode = AppLockPrefs.getMode(ReadingGateAccessibilityService.this);
+                            if (mode == null) mode = "paragraph";
+                            JSONObject row = new JSONObject();
+                            row.put("bookId", bookId != null ? bookId : "");
+                            row.put("chapter", chap);
+                            row.put("mode", mode);
+                            AppLockPrefs.enqueuePendingGateCompletion(ReadingGateAccessibilityService.this, row);
+                        } catch (Exception ignored) {
+                        }
                         if ("chapter".equals(AppLockPrefs.getMode(ReadingGateAccessibilityService.this))) {
                             GateBibleProgress.advanceChapterGate(ReadingGateAccessibilityService.this);
                         } else {

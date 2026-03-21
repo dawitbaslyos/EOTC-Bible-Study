@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 /**
  * Streams {@code public/data/bible-content.json} from assets — one verse, five consecutive verses
@@ -420,5 +421,76 @@ public final class BibleGateNavigator {
                 .replace("<", "&lt;")
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;");
+    }
+
+    /** Lowercase short id matching JS `book.id` (e.g. gen, 2ti). */
+    public static String getBookShortNameEn(Context ctx, int bookIndex) {
+        try (InputStream in = ctx.getAssets().open(ASSET_PATH);
+             JsonReader r = new JsonReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            r.beginArray();
+            for (int i = 0; i < bookIndex; i++) {
+                if (!r.hasNext()) return "";
+                skipBook(r);
+            }
+            if (!r.hasNext()) return "";
+            r.beginObject();
+            String shortName = "";
+            while (r.hasNext()) {
+                String name = r.nextName();
+                if ("book_short_name_en".equals(name)) {
+                    shortName = r.nextString();
+                } else {
+                    r.skipValue();
+                }
+            }
+            r.endObject();
+            if (shortName == null || shortName.isEmpty()) return "";
+            return shortName.toLowerCase(Locale.US);
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    /** Canonical chapter number at chapters[chapterIndex] (matches JSON "chapter" field). */
+    public static int getChapterNumberAt(Context ctx, int bookIndex, int chapterIndex) {
+        try (InputStream in = ctx.getAssets().open(ASSET_PATH);
+             JsonReader r = new JsonReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            r.beginArray();
+            for (int i = 0; i < bookIndex; i++) {
+                if (!r.hasNext()) return 1;
+                skipBook(r);
+            }
+            if (!r.hasNext()) return 1;
+            r.beginObject();
+            while (r.hasNext()) {
+                String name = r.nextName();
+                if ("chapters".equals(name)) {
+                    r.beginArray();
+                    for (int j = 0; j < chapterIndex; j++) {
+                        if (!r.hasNext()) return 1;
+                        skipChapter(r);
+                    }
+                    if (!r.hasNext()) return 1;
+                    r.beginObject();
+                    int chapterNum = 1;
+                    while (r.hasNext()) {
+                        String n = r.nextName();
+                        if ("chapter".equals(n)) {
+                            chapterNum = r.nextInt();
+                        } else {
+                            r.skipValue();
+                        }
+                    }
+                    r.endObject();
+                    return chapterNum;
+                } else {
+                    r.skipValue();
+                }
+            }
+            r.endObject();
+        } catch (Exception e) {
+            return 1;
+        }
+        return 1;
     }
 }

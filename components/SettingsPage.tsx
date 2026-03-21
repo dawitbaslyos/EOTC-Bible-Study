@@ -37,7 +37,7 @@ const SettingsPage: React.FC<Props> = ({
 
   return (
     <div className="flex-1 flex flex-col bg-[var(--bg-primary)] animate-in fade-in duration-500 overflow-y-auto custom-scrollbar h-full">
-      <header className="p-8 border-b border-theme flex justify-between items-center sticky top-0 bg-[var(--bg-primary)]/80 z-10 backdrop-blur-md">
+      <header className="px-8 pb-8 pt-[max(2rem,env(safe-area-inset-top,0px))] border-b border-theme flex justify-between items-center sticky top-0 bg-[var(--bg-primary)]/95 z-10 backdrop-blur-md">
         <div>
           <h2 className="text-3xl serif text-[var(--gold)]">Settings</h2>
           <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-black">Preferences</p>
@@ -56,20 +56,22 @@ const SettingsPage: React.FC<Props> = ({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <button 
+              type="button"
               onClick={() => setTheme('dark')}
               className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center space-y-3 ${theme === 'dark' ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-lg' : 'bg-[var(--card-bg)] border-theme hover:border-[var(--gold)]/30'}`}
             >
-              <Icons.Moon className="w-8 h-8 mb-2" />
-              <div className="text-sm font-bold">Dark Mode</div>
-              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter text-center">Gentle on eyes</p>
+              <Icons.Moon className={`w-8 h-8 mb-2 shrink-0 ${theme === 'dark' ? 'text-[var(--gold)]' : 'text-[var(--text-secondary)]'}`} />
+              <div className="text-sm font-bold text-[var(--text-primary)]">Dark Mode</div>
+              <p className="text-[9px] text-[var(--text-secondary)] uppercase tracking-tighter text-center leading-snug">Gentle on eyes</p>
             </button>
             <button 
+              type="button"
               onClick={() => setTheme('light')}
               className={`p-6 rounded-3xl border-2 transition-all flex flex-col items-center space-y-3 ${theme === 'light' ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-lg' : 'bg-[var(--card-bg)] border-theme hover:border-[var(--gold)]/30'}`}
             >
-              <Icons.Sun className="w-8 h-8 mb-2" />
-              <div className="text-sm font-bold">Light Mode</div>
-              <p className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter text-center">For clear daylight</p>
+              <Icons.Sun className={`w-8 h-8 mb-2 shrink-0 ${theme === 'light' ? 'text-[var(--gold)]' : 'text-[var(--text-secondary)]'}`} />
+              <div className="text-sm font-bold text-[var(--text-primary)]">Light Mode</div>
+              <p className="text-[9px] text-[var(--text-secondary)] uppercase tracking-tighter text-center leading-snug">For clear daylight</p>
             </button>
           </div>
         </section>
@@ -97,10 +99,10 @@ const SettingsPage: React.FC<Props> = ({
                     className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all ${active ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-md' : 'bg-[var(--card-bg)] border-theme opacity-60'}`}
                   >
                     <div className="flex items-center space-x-5">
-                      <div className={active ? 'text-[var(--gold)]' : 'text-[var(--text-muted)]'}>{r.icon}</div>
+                      <div className={active ? 'text-[var(--gold)]' : 'text-[var(--text-secondary)]'}>{r.icon}</div>
                       <div className="text-left">
                         <div className={`text-sm font-bold ${active ? 'text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}`}>{r.label}</div>
-                        <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter">{r.desc}</div>
+                        <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-tighter">{r.desc}</div>
                       </div>
                     </div>
                     <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${active ? 'border-[var(--gold)] bg-[var(--gold)]' : 'border-theme'}`}>
@@ -123,7 +125,7 @@ const SettingsPage: React.FC<Props> = ({
                             [r.id]: { hour: hh, minute: mm }
                           });
                         }}
-                        className="bg-transparent text-[var(--text-primary)] text-sm font-mono border border-theme rounded-lg px-2 py-1"
+                        className="bg-[var(--input-bg)] text-[var(--text-primary)] text-sm font-mono border border-theme rounded-lg px-2 py-1 [color-scheme:inherit]"
                       />
                     </label>
                   )}

@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- minHeight ~2 launcher rows so the hero day isn’t squeezed into a 1-row-tall default -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="90dp"
-    android:minHeight="45dp"
+    android:minHeight="88dp"
     android:minResizeWidth="45dp"
-    android:minResizeHeight="45dp"
+    android:minResizeHeight="56dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_senay_calendar"
     android:previewImage="@mipmap/ic_launcher"

@@ -6,23 +6,40 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Resources;
 import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.RemoteViews;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Calendar;
+import java.util.Locale;
+
 /**
- * Home-screen widget: Ethiopian date from {@link EthiopianDateHelper}; saint/holiday/streak from
- * {@code widget_snapshot}. Refreshes on schedule via {@link WidgetAlarmScheduler}.
+ * Home-screen widget: Ethiopian month (gold) + day + weekday, optional saint/feast + streak.
+ * When the widget is resized shorter, rows are hidden (weekday → extras) so the day digit keeps room.
+ * Month + day stay visible for almost all sizes; day-only is only for extreme 1-row micro heights.
  */
 public class SenayCalendarWidget extends AppWidgetProvider {
 
     private static final String PREFS_NAME = "CapacitorStorage";
     private static final String KEY_SNAPSHOT = "widget_snapshot";
+
+    /** OPTION_* values are in dp. */
+    /** Only below this (≈1 launcher row): hide month — otherwise month + day always. */
+    private static final int HEIGHT_DAY_ONLY_DP = 54;
+    private static final int HEIGHT_NO_WEEKDAY_DP = 120;
+    private static final int HEIGHT_NO_EXTRAS_DP = 152;
+
+    /** Matches default layout widget_day; Java overrides for squeezed sizes. */
+    private static final float DAY_SP_FULL = 46f;
+    private static final float DAY_SP_COMPACT = 38f;
+    private static final float DAY_SP_TINY = 32f;
 
     public static void refreshAll(Context context) {
         AppWidgetManager mgr = AppWidgetManager.getInstance(context);
@@ -74,8 +91,9 @@ public class SenayCalendarWidget extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_senay_calendar);
 
         EthiopianDateHelper.EthiopianDate eth = EthiopianDateHelper.getEthiopianDateNow();
-        String dateLabel = eth.dateLabel();
-        String yearLabel = eth.yearName;
+        Calendar now = Calendar.getInstance(Locale.getDefault());
+
+        String weekday = EthiopianDateHelper.weekdayNameAmharic(now);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String snapshotJson = prefs.getString(KEY_SNAPSHOT, null);
@@ -93,8 +111,9 @@ public class SenayCalendarWidget extends AppWidgetProvider {
             }
         }
 
-        views.setTextViewText(R.id.widget_date, dateLabel);
-        views.setTextViewText(R.id.widget_year, yearLabel);
+        views.setTextViewText(R.id.widget_month, eth.monthName);
+        views.setTextViewText(R.id.widget_day, String.valueOf(eth.day));
+        views.setTextViewText(R.id.widget_weekday, weekday);
         views.setTextViewText(R.id.widget_saint, saintOrHoliday);
 
         String streakText = streak > 0 ? "\uD83D\uDD6F " + streak + " days" : "";
@@ -108,17 +127,64 @@ public class SenayCalendarWidget extends AppWidgetProvider {
         }
         boolean isPortrait = minHeight > minWidth;
         int area = minWidth * minHeight;
+        boolean hasSize = minWidth > 0 && minHeight > 0;
 
-        if (area > 0 && area < 4000) {
-            views.setViewVisibility(R.id.widget_year, View.GONE);
-            views.setViewVisibility(R.id.widget_streak, View.GONE);
-        } else if (area > 0 && area < 9000) {
-            views.setViewVisibility(R.id.widget_year, View.VISIBLE);
-            views.setViewVisibility(R.id.widget_streak, isPortrait ? View.VISIBLE : View.GONE);
-        } else {
-            views.setViewVisibility(R.id.widget_year, View.VISIBLE);
-            views.setViewVisibility(R.id.widget_streak, View.VISIBLE);
+        boolean hasSaint = saintOrHoliday != null && !saintOrHoliday.trim().isEmpty();
+        boolean hasStreak = streak > 0;
+
+        boolean tierTiny = area > 0 && area < 4500;
+        boolean tierWeekdayOnly = area > 0 && area < 12000;
+        boolean tierMid = area > 0 && area < 22000;
+
+        // Vertical squeeze: weekday & extras drop first; month + day unless height is microscopic
+        boolean dayOnlyMode = hasSize && minHeight < HEIGHT_DAY_ONLY_DP;
+        boolean noWeekdayMode = hasSize && minHeight < HEIGHT_NO_WEEKDAY_DP;
+        boolean noExtrasMode = hasSize && minHeight < HEIGHT_NO_EXTRAS_DP;
+
+        boolean showMonth = !dayOnlyMode;
+        boolean showWeekday = showMonth && !noWeekdayMode && !tierTiny;
+        boolean showSaint = showMonth && !noWeekdayMode && !noExtrasMode && !tierTiny && !tierWeekdayOnly && hasSaint;
+        boolean showStreak = showMonth && !noWeekdayMode && !noExtrasMode && !tierTiny && !tierWeekdayOnly && hasStreak && (!tierMid || isPortrait);
+
+        boolean showDivider = showWeekday && (showSaint || showStreak);
+
+        views.setViewVisibility(R.id.widget_month, showMonth ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_weekday, showWeekday ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_saint, showSaint ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_streak, showStreak ? View.VISIBLE : View.GONE);
+        views.setViewVisibility(R.id.widget_divider, showDivider ? View.VISIBLE : View.GONE);
+
+        // Scale day text when vertically compressed (layout default is DAY_SP_FULL sp)
+        float daySp = DAY_SP_FULL;
+        if (dayOnlyMode) {
+            daySp = minHeight < 44 ? DAY_SP_TINY : (minHeight < 50 ? DAY_SP_TINY + 2f : DAY_SP_COMPACT);
+        } else if (noWeekdayMode) {
+            // Month + day: step down before dropping weekday, so short widgets still read well
+            if (minHeight < 80) {
+                daySp = DAY_SP_COMPACT;
+            } else if (minHeight < 100) {
+                daySp = 41f;
+            } else {
+                daySp = DAY_SP_FULL;
+            }
         }
+        // Only override XML when squeezed; default + layout-small/large keep their own base sizes
+        if (dayOnlyMode || (noWeekdayMode && daySp != DAY_SP_FULL)) {
+            views.setTextViewTextSize(R.id.widget_day, TypedValue.COMPLEX_UNIT_SP, daySp);
+        }
+
+        // Tighter outer padding when cramped
+        Resources res = context.getResources();
+        float density = res.getDisplayMetrics().density;
+        int padPx = Math.round(8f * density);
+        if (dayOnlyMode) {
+            padPx = Math.round(4f * density);
+        } else if (noWeekdayMode && minHeight < 88) {
+            padPx = Math.round(6f * density);
+        } else if (noWeekdayMode) {
+            padPx = Math.round(7f * density);
+        }
+        views.setViewPadding(R.id.widget_root, padPx, padPx, padPx, padPx);
 
         Intent intent = new Intent(context, MainActivity.class);
         PendingIntent pendingIntent = PendingIntent.getActivity(

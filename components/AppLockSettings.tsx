@@ -129,10 +129,12 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
         <h3 className="uppercase text-xs font-black tracking-[0.2em]">Focus lock (Android)</h3>
       </div>
 
-      <p className="text-[10px] text-[var(--text-muted)] leading-relaxed">
+      <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
         Locked apps show a Bible gate from <span className="font-mono">bible-content.json</span> (bundled with Senay).
-        Your place advances each time you finish the gate. Choose <strong>five verses</strong> per lock or a{' '}
-        <strong>full chapter</strong> below — those are the only two sizes.
+        Your place advances each time you finish the gate. When you open Senay again, that reading is added to your{' '}
+        <strong className="text-[var(--text-primary)]">streak and heatmap</strong>
+        {` `}(chapter mode also marks the chapter in your library progress). Choose <strong>five verses</strong> per lock or a{' '}
+        <strong>full chapter</strong> below.
       </p>
 
       {state === null && (
@@ -145,15 +147,15 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
             type="button"
             disabled={busy}
             onClick={() => void toggleEnabled(!state.enabled)}
-            className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all ${
+            className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all text-left text-[var(--text-primary)] ${
               state.enabled
                 ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-md'
                 : 'bg-[var(--card-bg)] border-theme opacity-80'
             }`}
           >
-            <div className="text-left">
-              <div className="text-sm font-bold">Enable focus lock</div>
-              <div className="text-[9px] text-[var(--text-muted)] uppercase tracking-tighter">
+            <div className="text-left min-w-0 pr-2">
+              <div className="text-sm font-bold text-[var(--text-primary)]">Enable focus lock</div>
+              <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-tighter mt-0.5">
                 Block selected apps until you read
               </div>
             </div>
@@ -171,20 +173,22 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
           </button>
 
           <div className="space-y-2">
-            <div className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">Gate step size</div>
+            <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">
+              Gate step size
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void setMode('paragraph')}
-                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                className={`p-4 rounded-2xl border-2 text-left transition-all text-[var(--text-primary)] ${
                   state.mode === 'paragraph'
                     ? 'border-[var(--gold)] bg-[var(--gold-muted)]'
                     : 'border-theme bg-[var(--card-bg)]'
                 }`}
               >
-                <div className="text-xs font-bold">5 paragraphs</div>
-                <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
+                <div className="text-xs font-bold text-[var(--text-primary)]">5 paragraphs</div>
+                <div className="text-[8px] text-[var(--text-secondary)] mt-1 leading-snug">
                   Five verses in order from the Bible file (one gate)
                 </div>
               </button>
@@ -192,14 +196,14 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                 type="button"
                 disabled={busy}
                 onClick={() => void setMode('chapter')}
-                className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                className={`p-4 rounded-2xl border-2 text-left transition-all text-[var(--text-primary)] ${
                   state.mode === 'chapter'
                     ? 'border-[var(--gold)] bg-[var(--gold-muted)]'
                     : 'border-theme bg-[var(--card-bg)]'
                 }`}
               >
-                <div className="text-xs font-bold">1 chapter</div>
-                <div className="text-[8px] text-[var(--text-muted)] mt-1 leading-snug">
+                <div className="text-xs font-bold text-[var(--text-primary)]">1 chapter</div>
+                <div className="text-[8px] text-[var(--text-secondary)] mt-1 leading-snug">
                   Whole chapter each time; next lock starts the next chapter
                 </div>
               </button>
@@ -211,7 +215,7 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
               type="button"
               disabled={busy}
               onClick={() => void AppLock.openAccessibilitySettings()}
-              className="px-4 py-3 rounded-2xl bg-[var(--card-bg)] border border-theme text-[10px] font-black uppercase tracking-widest text-[var(--gold)]"
+              className="px-4 py-3 rounded-2xl bg-[var(--card-bg)] border border-theme text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] ring-1 ring-[var(--gold)]/35"
             >
               Accessibility settings
             </button>
@@ -226,7 +230,9 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <div className="text-[9px] uppercase tracking-widest text-[var(--text-muted)]">Locked apps</div>
+              <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">
+                Locked apps
+              </div>
               <button
                 type="button"
                 disabled={busy}
@@ -266,10 +272,10 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
           </div>
 
           {!state.hasGateReadingContent && (
-            <p className="text-[10px] text-amber-500/90 leading-relaxed">
-              Bible file missing from the app bundle. Run <span className="font-mono">npm run build</span> then{' '}
-              <span className="font-mono">npx cap sync android</span> so <span className="font-mono">public/data/bible-content.json</span>{' '}
-              is copied into the APK.
+            <p className="text-[10px] text-[var(--text-primary)] leading-relaxed rounded-xl p-3 border border-amber-600/45 bg-amber-500/[0.12]">
+              Bible file missing from the app bundle. Run <span className="font-mono font-semibold">npm run build</span> then{' '}
+              <span className="font-mono font-semibold">npx cap sync android</span> so{' '}
+              <span className="font-mono font-semibold">public/data/bible-content.json</span> is copied into the APK.
             </p>
           )}
         </div>
@@ -302,9 +308,9 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                   key={a.packageName}
                   type="button"
                   onClick={() => addPackage(a.packageName)}
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-[var(--card-bg)] border border-transparent hover:border-theme transition-all"
+                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-[var(--card-bg)] border border-transparent hover:border-theme transition-all text-[var(--text-primary)]"
                 >
-                  <div className="text-sm font-bold truncate">{a.label}</div>
+                  <div className="text-sm font-bold truncate text-[var(--text-primary)]">{a.label}</div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate">{a.packageName}</div>
                 </button>
               ))}

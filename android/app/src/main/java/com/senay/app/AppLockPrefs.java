@@ -3,6 +3,10 @@ package com.senay.app;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -21,6 +25,8 @@ public final class AppLockPrefs {
 
     private static final String KEY_UNLOCK_PREFIX = "gate_unlock_ms_";
     private static final String KEY_LEFT_PREFIX = "gate_left_";
+    /** JSON array of { bookId, chapter, mode } queued for JS to merge into reading stats. */
+    private static final String KEY_PENDING_GATE_QUEUE = "pending_gate_queue";
 
     private AppLockPrefs() {}
 
@@ -100,5 +106,24 @@ public final class AppLockPrefs {
         if (isUserLeftSinceUnlock(ctx, packageName)) return false;
         long age = System.currentTimeMillis() - t;
         return age < GATE_PASS_VALID_MS;
+    }
+
+    public static void enqueuePendingGateCompletion(Context ctx, JSONObject row) {
+        if (row == null) return;
+        try {
+            JSONArray arr = new JSONArray(p(ctx).getString(KEY_PENDING_GATE_QUEUE, "[]"));
+            arr.put(row);
+            p(ctx).edit().putString(KEY_PENDING_GATE_QUEUE, arr.toString()).apply();
+        } catch (JSONException e) {
+            p(ctx).edit().putString(KEY_PENDING_GATE_QUEUE, "[]").apply();
+        }
+    }
+
+    /** Returns JSON array string and clears the queue. */
+    public static String consumePendingGateQueue(Context ctx) {
+        SharedPreferences pref = p(ctx);
+        String s = pref.getString(KEY_PENDING_GATE_QUEUE, "[]");
+        pref.edit().putString(KEY_PENDING_GATE_QUEUE, "[]").apply();
+        return s != null ? s : "[]";
     }
 }

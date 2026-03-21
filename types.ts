@@ -107,6 +107,8 @@ export interface UserStats {
   preferredRituals?: RitualTime[];
   /** Local times for daily routine notifications (when morning/evening ritual is enabled). */
   ritualReminderTimes?: Partial<Record<RitualTime, { hour: number; minute: number }>>;
+  /** Focus-lock overlay readings completed (native Android gate). */
+  gateLockReadingsCompleted?: number;
   hasCompletedOnboarding?: boolean;
   streak: number;
   lastStudyDate?: string;

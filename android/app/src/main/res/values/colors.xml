@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Senay brand gold — month name on home widget -->
+    <color name="widget_gold">#D4AF37</color>
+    <color name="widget_gold_soft">#C9A76A</color>
+</resources>

@@ -1,12 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Solid pill-style surface (reference: white text on black, high contrast). -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
     android:shape="rectangle">
-    <solid android:color="#111111" />
-    <corners android:radius="16dp" />
-    <padding
-        android:left="8dp"
-        android:top="8dp"
-        android:right="8dp"
-        android:bottom="8dp" />
+    <solid android:color="#FF000000" />
+    <corners android:radius="28dp" />
 </shape>
-

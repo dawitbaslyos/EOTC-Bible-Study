@@ -17,6 +17,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 
 import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -118,6 +120,28 @@ public class AppLockPlugin extends Plugin {
     /**
      * Human-readable app names for locked package ids (uses {@link PackageManager#getApplicationLabel}).
      */
+    @PluginMethod
+    public void consumePendingGateCompletions(PluginCall call) {
+        String json = AppLockPrefs.consumePendingGateQueue(getContext());
+        JSArray out = new JSArray();
+        try {
+            JSONArray arr = new JSONArray(json);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject o = arr.getJSONObject(i);
+                JSObject row = new JSObject();
+                row.put("bookId", o.optString("bookId", ""));
+                row.put("chapter", o.optInt("chapter", 1));
+                row.put("mode", o.optString("mode", "paragraph"));
+                out.put(row);
+            }
+        } catch (JSONException e) {
+            // leave empty
+        }
+        JSObject ret = new JSObject();
+        ret.put("items", out);
+        call.resolve(ret);
+    }
+
     @PluginMethod
     public void getLabelsForPackages(PluginCall call) {
         JSArray arr = call.getArray("packages", new JSArray());

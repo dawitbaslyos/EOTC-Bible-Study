@@ -5,6 +5,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
+      // Required for Capacitor (Android/iOS): absolute "/assets/..." fails to load in WebView.
+      base: './',
       server: {
         port: 3000,
         host: '0.0.0.0',
