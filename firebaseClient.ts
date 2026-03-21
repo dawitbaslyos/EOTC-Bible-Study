@@ -1,5 +1,11 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import {
+  initializeAuth,
+  getAuth,
+  browserLocalPersistence,
+  browserPopupRedirectResolver
+} from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
 
 // Firebase configuration
 // (edit here if you change Firebase project)
@@ -13,6 +19,21 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
-export const firebaseApp = app;
 
+/**
+ * Web: `signInWithPopup` / redirect need `browserPopupRedirectResolver` or Firebase throws
+ * `auth/argument-error` (modular SDK). Native WebView still uses the same Auth for `signInWithCredential`.
+ */
+function createAuth(): Auth {
+  try {
+    return initializeAuth(app, {
+      persistence: browserLocalPersistence,
+      popupRedirectResolver: browserPopupRedirectResolver
+    });
+  } catch {
+    return getAuth(app);
+  }
+}
+
+export const auth = createAuth();
+export const firebaseApp = app;

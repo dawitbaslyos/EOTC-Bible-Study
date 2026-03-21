@@ -49,20 +49,20 @@ dependencies {
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation project(':capacitor-cordova-android-plugins')
 
-    // Firebase Analytics (native, for better mobile compatibility)
-    implementation platform('com.google.firebase:firebase-bom:34.10.0')
+    // Firebase (BoM pins versions — https://firebase.google.com/docs/android/setup)
+    implementation platform('com.google.firebase:firebase-bom:34.11.0')
     implementation 'com.google.firebase:firebase-analytics'
+    // Native Auth SDK (pairs with google-services.json + SHA-1; JS auth in WebView still uses the same project)
+    implementation 'com.google.firebase:firebase-auth'
 }
 
 
 apply from: 'capacitor.build.gradle'
 
-try {
-    def servicesJSON = file('google-services.json')
-    if (servicesJSON.text) {
-        apply plugin: 'com.google.gms.google-services'
-    }
-} catch(Exception e) {
-    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+// Apply last so it can process google-services.json after the module is configured.
+if (file('google-services.json').exists()) {
+    apply plugin: 'com.google.gms.google-services'
+} else {
+    logger.warn('google-services.json missing under android/app — Firebase on Android will not be configured.')
 }
 

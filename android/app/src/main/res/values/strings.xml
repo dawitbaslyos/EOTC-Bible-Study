@@ -1,5 +1,9 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
+    <!-- Required by @codetrix-studio/capacitor-google-auth fallback if config is missing (Web OAuth client ID). -->
+    <!-- Web OAuth client (same as Capacitor GoogleAuth serverClientId / Firebase ID token audience). -->
+    <string name="server_client_id">1082609416678-b7qapm38f0o0n7livl18d2mfef1g8d95.apps.googleusercontent.com</string>
+
     <string name="app_name">Senay: Bible Study</string>
     <string name="title_activity_main">Senay: Bible Study</string>
     <string name="package_name">com.senay.app</string>

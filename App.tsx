@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppPhase, WudaseLiturgy, DailyManna, Quote, BibleBookJSON, UserStats, Theme, RitualTime, Book } from './types';
 import Dashboard from './components/Dashboard';
 import PreparationPhase from './components/PreparationPhase';
@@ -20,16 +20,65 @@ import {
 import { pickDailyQuoteFromBible } from './utils/dailyQuoteFromBible';
 import { isAndroidNative } from './utils/appPermissions';
 import PermissionSetupModal, { ANDROID_PERMISSIONS_DONE_KEY } from './components/PermissionSetupModal';
+import type { User as FirebaseUser } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signOut } from 'firebase/auth';
+import { auth } from './firebaseClient';
+
 interface UserProfile {
   name: string;
   email: string;
   photoURL: string;
   provider: 'google' | 'facebook' | 'guest';
+  /** Display / local id. Prefixed with `native_` when Firebase sign-in failed (device-only session). */
   uid: string;
+  /** Firebase Auth UID when cloud sign-in succeeded; omit for native-only Google. */
+  firebaseUid?: string;
+}
+
+function profileFromFirebaseUser(firebaseUser: FirebaseUser): UserProfile {
+  const pid = firebaseUser.providerData?.[0]?.providerId;
+  return {
+    name: firebaseUser.displayName || 'Senay User',
+    email: firebaseUser.email || '',
+    photoURL: firebaseUser.photoURL || '',
+    uid: firebaseUser.uid,
+    firebaseUid: firebaseUser.uid,
+    provider: pid === 'facebook.com' ? 'facebook' : 'google'
+  };
+}
+
+function migrateLegacyProfile(parsed: UserProfile): UserProfile {
+  if (
+    parsed.provider !== 'guest' &&
+    !parsed.uid.startsWith('native_') &&
+    parsed.uid &&
+    !parsed.firebaseUid
+  ) {
+    return { ...parsed, firebaseUid: parsed.uid };
+  }
+  return parsed;
+}
+
+function readUserFromStorage(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem('senay_user');
+    if (!raw) return null;
+    return migrateLegacyProfile(JSON.parse(raw) as UserProfile);
+  } catch {
+    return null;
+  }
+}
+
+/** Firestore cloud sync key: only when Firebase authenticated this user (not native-only Google). */
+function resolveCloudUid(user: UserProfile | null): string | null {
+  if (!user || user.provider === 'guest') return null;
+  if (user.uid.startsWith('native_')) return null;
+  return (user.firebaseUid || user.uid) || null;
 }
 
 const App: React.FC = () => {
-  const [user, setUser] = useState<UserProfile | null>(null);
+  // One-time hydrate from localStorage. Async bootstrap must NOT re-read storage (Android race with Google sign-in).
+  const [user, setUser] = useState<UserProfile | null>(() => readUserFromStorage());
   const [phase, setPhase] = useState<AppPhase>(AppPhase.DASHBOARD);
   const [showTransition, setShowTransition] = useState(false);
   const [isDailyWudase, setIsDailyWudase] = useState(false);
@@ -50,7 +99,7 @@ const App: React.FC = () => {
   const [androidPermissionOpen, setAndroidPermissionOpen] = useState(false);
   const [androidPermissionManual, setAndroidPermissionManual] = useState(false);
 
-  const cloudUid = user?.provider === 'guest' ? null : (user?.uid || null);
+  const cloudUid = resolveCloudUid(user);
   const { stats, completeChapter, applyGateCompletionsFromLock, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
 
@@ -81,11 +130,6 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    const savedUser = localStorage.getItem('senay_user');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-
     const fetchData = async () => {
       try {
         const [litRes, bibleRes, booksRes] = await Promise.all([
@@ -137,7 +181,115 @@ const App: React.FC = () => {
       }
     };
 
-    fetchData();
+    void fetchData();
+  }, []);
+
+  // Hydrate user after Firebase is ready (prefer live session over stale localStorage), then subscribe.
+  // Do NOT return early for guest in the listener — otherwise a leftover guest profile blocks upgrading to Google.
+  useEffect(() => {
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+
+    void (async () => {
+      await auth.authStateReady();
+      if (cancelled) return;
+
+      const persistProfile = (profile: UserProfile) => {
+        try {
+          localStorage.setItem('senay_user', JSON.stringify(profile));
+        } catch {
+          /* ignore */
+        }
+      };
+
+      try {
+        const redirectResult = await getRedirectResult(auth);
+        if (redirectResult?.user) {
+          const profile = profileFromFirebaseUser(redirectResult.user);
+          persistProfile(profile);
+          setUser(profile);
+          setPhase(AppPhase.DASHBOARD);
+        } else {
+          // Capacitor Android WebView often lags updating auth.currentUser right after native Google + signInWithCredential.
+          let firebaseUser = auth.currentUser;
+          if (!firebaseUser) {
+            for (let i = 0; i < 12 && !firebaseUser; i++) {
+              await new Promise((r) => setTimeout(r, 50));
+              if (cancelled) return;
+              firebaseUser = auth.currentUser;
+            }
+          }
+          if (firebaseUser) {
+            const profile = profileFromFirebaseUser(firebaseUser);
+            persistProfile(profile);
+            setUser(profile);
+          }
+          // If no Firebase session: keep initial state from readUserFromStorage() — do NOT re-apply localStorage here
+          // (would race with handleLogin and can overwrite a fresh Google session with stale guest data).
+        }
+      } catch (e) {
+        console.error('Auth bootstrap failed:', e);
+      }
+
+      if (cancelled) return;
+
+      unsub = onAuthStateChanged(auth, (firebaseUser) => {
+        if (!firebaseUser) return;
+        setUser((prev) => {
+          if (prev?.uid === firebaseUser.uid && prev?.provider !== 'guest') return prev;
+          const profile = profileFromFirebaseUser(firebaseUser);
+          try {
+            localStorage.setItem('senay_user', JSON.stringify(profile));
+          } catch {
+            /* ignore */
+          }
+          // Leave login screen when a new Firebase session is applied (not on token refresh — same uid returns early above).
+          queueMicrotask(() => setPhase(AppPhase.DASHBOARD));
+          return profile;
+        });
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
+  }, []);
+
+  // Android: after the native Google account sheet closes, Firebase sometimes updates one tick late in the WebView.
+  useEffect(() => {
+    if (!isAndroidNative()) return;
+    let remove: (() => void) | undefined;
+
+    void import('@capacitor/app').then(({ App }) => {
+      void App.addListener('appStateChange', async ({ isActive }) => {
+        if (!isActive) return;
+        try {
+          await auth.authStateReady();
+          const u = auth.currentUser;
+          if (!u) return;
+          setUser((prev) => {
+            if (prev?.uid === u.uid && prev?.provider !== 'guest') return prev;
+            const profile = profileFromFirebaseUser(u);
+            try {
+              localStorage.setItem('senay_user', JSON.stringify(profile));
+            } catch {
+              /* ignore */
+            }
+            queueMicrotask(() => setPhase(AppPhase.DASHBOARD));
+            return profile;
+          });
+        } catch {
+          /* ignore */
+        }
+      }).then((handle) => {
+        remove = () => void handle.remove();
+      });
+    });
+
+    return () => {
+      remove?.();
+    };
   }, []);
 
   // Android: one-time permission sheet (native Allow dialogs) after login.
@@ -161,23 +313,39 @@ const App: React.FC = () => {
     syncRitualRemindersFromStats(next).catch(() => {});
   };
 
-  const handleLogin = (profile: UserProfile) => {
-    setUser(profile);
-    localStorage.setItem('senay_user', JSON.stringify(profile));
-    setPhase(AppPhase.DASHBOARD);
-    notify({ 
-      title: "Peace be with you", 
-      body: `Welcome to your sanctuary, ${profile.name.split(' ')[0]}.`, 
-      type: 'emotional', 
-      priority: 'low'
-    });
+  const handleLogin = useCallback((profile: UserProfile) => {
+    try {
+      // Persist first so any concurrent bootstrap/storage reads see the new account (Android race).
+      localStorage.setItem('senay_user', JSON.stringify(profile));
+      setUser(profile);
+      setPhase(AppPhase.DASHBOARD);
+      const firstName = (profile.name || 'Friend').split(/\s+/)[0] || 'Friend';
+      notify({
+        title: 'Peace be with you',
+        body: `Welcome to your sanctuary, ${firstName}.`,
+        type: 'emotional',
+        priority: 'low'
+      });
 
-    sendWelcomeNotification(profile.name.split(' ')[0]).catch(() => {
-      // native notifications might not be available; fail silently
-    });
+      if (profile.uid.startsWith('native_')) {
+        notify({
+          title: 'Signed in on this device',
+          body:
+            'Cloud sync is off until Firebase accepts this Android build. In Firebase Console → Project settings → your Android app, add the debug SHA-1 fingerprint and download a fresh google-services.json.',
+          type: 'emotional',
+          priority: 'low'
+        });
+      }
 
-    syncRitualRemindersFromStats(stats).catch(() => {});
-  };
+      sendWelcomeNotification(firstName).catch(() => {
+        // native notifications might not be available; fail silently
+      });
+
+      syncRitualRemindersFromStats(stats).catch(() => {});
+    } catch (e) {
+      console.error('handleLogin failed:', e);
+    }
+  }, [notify, stats]);
 
   // Keep native routine alarms in sync with settings (all users, including guest).
   useEffect(() => {
@@ -243,6 +411,9 @@ const App: React.FC = () => {
   }, [user?.uid, hasSeenOnboarding]);
 
   const handleLogout = () => {
+    void signOut(auth).catch(() => {
+      /* still clear local session */
+    });
     setUser(null);
     localStorage.removeItem('senay_user');
     setPhase(AppPhase.DASHBOARD);

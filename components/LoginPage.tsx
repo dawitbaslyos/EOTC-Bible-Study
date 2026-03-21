@@ -1,73 +1,142 @@
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { App } from '@capacitor/app';
 import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { Icons } from '../constants';
 import { auth } from '../firebaseClient';
 import {
   FacebookAuthProvider,
   GoogleAuthProvider,
-  getRedirectResult,
-  onAuthStateChanged,
   signInWithCredential,
   signInWithPopup,
-  signInWithRedirect
+  signInWithRedirect,
+  signOut
 } from 'firebase/auth';
 
 interface Props {
   onLogin: (profile: any) => void;
 }
 
+const WEB_CLIENT_ID =
+  '1082609416678-b7qapm38f0o0n7livl18d2mfef1g8d95.apps.googleusercontent.com';
+
+const providerFromUser = (user: any): 'google' | 'facebook' => {
+  const providerId = user?.providerData?.[0]?.providerId;
+  return providerId === 'facebook.com' ? 'facebook' : 'google';
+};
+
+/** Passing `undefined` as the 2nd arg can trigger `auth/argument-error` in some Firebase versions. */
+function firebaseGoogleCredential(idToken: string, accessToken?: string | null) {
+  const at = accessToken?.trim?.() ? accessToken : null;
+  return at ? GoogleAuthProvider.credential(idToken, at) : GoogleAuthProvider.credential(idToken);
+}
+
+/**
+ * Android: Codetrix GoogleAuth often returns from the account sheet without resolving `signIn()` the first time.
+ * Racing with `appStateChange` + `refresh()` mirrors the "tap Sign in again" workaround.
+ */
+async function androidGoogleUserAfterPicker(): Promise<any> {
+  let listener: { remove: () => Promise<void> } | undefined;
+  const signal = { done: false };
+  let sawInactive = false;
+
+  const resumeRefreshPromise = new Promise<any>((resolve) => {
+    void App.addListener('appStateChange', async ({ isActive }) => {
+      if (signal.done) return;
+      if (!isActive) {
+        sawInactive = true;
+        return;
+      }
+      if (!sawInactive) return;
+      await new Promise((r) => setTimeout(r, 450));
+      if (signal.done) return;
+      try {
+        // Plugin typings say `refresh()` returns `Authentication`, but runtime returns full User (with `.authentication`).
+        const u = (await GoogleAuth.refresh()) as any;
+        if (u?.authentication?.idToken) {
+          signal.done = true;
+          void listener?.remove();
+          resolve(u);
+        }
+      } catch {
+        /* ignore */
+      }
+    }).then((h) => {
+      listener = h;
+    });
+  });
+
+  const signInPromise = GoogleAuth.signIn().then((u) => {
+    if (!signal.done) {
+      signal.done = true;
+      void listener?.remove();
+    }
+    return u;
+  });
+
+  try {
+    return await Promise.race([
+      withTimeout(signInPromise, 90_000, 'Google sign-in'),
+      resumeRefreshPromise
+    ]);
+  } finally {
+    signal.done = true;
+    void listener?.remove();
+  }
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s. Try again or check your connection.`));
+    }, ms);
+    promise
+      .then((v) => {
+        clearTimeout(timer);
+        resolve(v);
+      })
+      .catch((e) => {
+        clearTimeout(timer);
+        reject(e);
+      });
+  });
+}
+
 const LoginPage: React.FC<Props> = ({ onLogin }) => {
   const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const didEnterRef = useRef(false);
+  const onLoginRef = useRef(onLogin);
+  onLoginRef.current = onLogin;
 
-  // If the user just returned from a redirect-based OAuth flow,
-  // finalize the login and enter the app.
-  useEffect(() => {
-    didEnterRef.current = false;
-
-    const providerFromUser = (user: any): 'google' | 'facebook' => {
-      const providerId = user?.providerData?.[0]?.providerId;
-      return providerId === 'facebook.com' ? 'facebook' : 'google';
-    };
-
-    const maybeLogin = (user: any) => {
-      if (!user) return;
-      if (didEnterRef.current) return;
-      didEnterRef.current = true;
-
-      onLogin({
+  const enterFromFirebaseUser = useCallback((user: any) => {
+    if (!user) return;
+    // Do not skip when didEnterRef is true — that blocked navigation after Google (race with onAuthStateChanged).
+    setAuthError(null);
+    try {
+      onLoginRef.current({
         name: user.displayName || 'Senay User',
         email: user.email || '',
         photoURL: user.photoURL || '',
         uid: user.uid || '',
+        firebaseUid: user.uid || undefined,
         provider: providerFromUser(user)
       });
-    };
+      didEnterRef.current = true;
+    } catch (e) {
+      console.error('onLogin failed:', e);
+      setAuthError('Could not finish sign-in. Please try again.');
+    }
+  }, []);
 
-    // 1) If we just came back from an OAuth redirect, finalize it.
-    getRedirectResult(auth)
-      .then((result) => {
-        maybeLogin(result?.user);
-      })
-      .catch((err) => {
-        console.error('OAuth redirect result failed:', err);
-      });
-
-    // 2) Also handle the case where Firebase is already signed-in but
-    // getRedirectResult returns null on reload.
-    const unsub = onAuthStateChanged(auth, (user) => {
-      maybeLogin(user);
-    });
-
-    return () => unsub();
-  }, [onLogin]);
-
-  // Native: load Google Sign-In config from capacitor.config (serverClientId for Firebase id token).
+  // Native: preload Google Sign-In with explicit Web client ID (must match capacitor.config + strings.xml).
   useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
-    GoogleAuth.initialize().catch((err) => {
+    GoogleAuth.initialize({
+      clientId: WEB_CLIENT_ID,
+      scopes: ['profile', 'email', 'openid'],
+      grantOfflineAccess: false
+    }).catch((err) => {
       console.warn('GoogleAuth.initialize failed:', err);
     });
   }, []);
@@ -75,6 +144,9 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
   const simulateGuestLogin = () => {
     setIsLoading('guest');
     setTimeout(() => {
+      // Clear any Firebase session so App sync listener doesn't fight guest mode.
+      void signOut(auth).catch(() => {});
+      didEnterRef.current = false;
       onLogin({
         name: 'Faithful Seeker',
         email: 'guest@senay.local',
@@ -88,36 +160,104 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
 
   const handleOAuthLogin = async (providerType: 'google' | 'facebook') => {
     setIsLoading(providerType);
+    setAuthError(null);
     try {
       if (providerType === 'google') {
         // Android/iOS: native account picker + ID token → Firebase (no external browser tab).
         if (Capacitor.isNativePlatform()) {
-          const googleUser = await GoogleAuth.signIn();
+          didEnterRef.current = false;
+          // Native plugin uses clientId / androidClientId from capacitor.config — ensure init gets explicit clientId too.
+          await GoogleAuth.initialize({
+            clientId: WEB_CLIENT_ID,
+            scopes: ['profile', 'email', 'openid'],
+            grantOfflineAccess: false
+          });
+          await auth.authStateReady();
+          const googleUser =
+            Capacitor.getPlatform() === 'android'
+              ? await androidGoogleUserAfterPicker()
+              : await withTimeout(GoogleAuth.signIn(), 90_000, 'Google sign-in');
           const idToken = googleUser.authentication?.idToken;
           if (!idToken) {
-            throw new Error('Google Sign-In did not return an ID token.');
+            throw new Error('Google Sign-In did not return an ID token. Check GoogleAuth serverClientId in capacitor.config.');
           }
-          const credential = GoogleAuthProvider.credential(idToken);
-          await signInWithCredential(auth, credential);
+          const accessToken = googleUser.authentication?.accessToken;
+          const credential = firebaseGoogleCredential(idToken, accessToken);
+          try {
+            const cred = await signInWithCredential(auth, credential);
+            await auth.authStateReady();
+            const u = cred.user ?? auth.currentUser;
+            if (!u) {
+              throw new Error('Firebase sign-in returned no user.');
+            }
+            // Always run app login (welcome + phase) — do not rely only on App’s auth listener on native WebView.
+            enterFromFirebaseUser(u);
+          } catch (firebaseErr: any) {
+            // Very common on Android when debug SHA-1 / Android OAuth client isn’t registered in Firebase.
+            console.error('Firebase signInWithCredential failed:', firebaseErr);
+            await signOut(auth).catch(() => {});
+
+            const g = googleUser as Record<string, unknown>;
+            const gid =
+              (g.id as string | undefined) ??
+              (g.userId as string | undefined) ??
+              (g.sub as string | undefined) ??
+              String((g.email as string) || 'unknown');
+            const given = g.givenName as string | undefined;
+            const family = g.familyName as string | undefined;
+            const fromParts = [given, family].filter(Boolean).join(' ');
+            const displayName =
+              (g.name as string | undefined) || fromParts || 'Senay User';
+
+            didEnterRef.current = false;
+            onLoginRef.current({
+              name: displayName,
+              email: (g.email as string) || '',
+              photoURL:
+                (g.imageUrl as string | undefined) ||
+                (g.picture as string | undefined) ||
+                '',
+              uid: `native_${gid}`,
+              provider: 'google'
+            });
+            didEnterRef.current = true;
+            setAuthError(null);
+          }
         } else {
-          // Web: same-tab popup (no full-page redirect).
-          await signInWithPopup(auth, new GoogleAuthProvider());
+          didEnterRef.current = false;
+          await auth.authStateReady();
+          const googleProvider = new GoogleAuthProvider();
+          googleProvider.addScope('profile');
+          googleProvider.addScope('email');
+          googleProvider.setCustomParameters({ prompt: 'select_account' });
+          const result = await signInWithPopup(auth, googleProvider);
+          enterFromFirebaseUser(result.user);
         }
         return;
       }
 
       const provider = new FacebookAuthProvider();
-      // Facebook still uses redirect (native SDK not wired).
       await signInWithRedirect(auth, provider);
     } catch (err: any) {
-      const code = String(err?.code ?? err?.error ?? '');
-      const msg = String(err?.message ?? err ?? '');
+      const code = String(err?.code ?? err?.error?.code ?? err?.error ?? '');
+      const msg = String(err?.message ?? err?.error?.message ?? err ?? '');
       const cancelled =
         code === '10' ||
         code === '12501' ||
         /cancel|canceled|12501|SIGN_IN_CANCELLED/i.test(msg);
       if (!cancelled) {
         console.error('OAuth login failed:', err);
+        const friendly =
+          err?.code === 'auth/invalid-credential' || err?.code === 'auth/account-exists-with-different-credential'
+            ? 'Could not verify your Google account with Firebase. Check SHA-1 / OAuth client in Firebase Console.'
+            : msg
+              ? code && !msg.includes(code)
+                ? `${msg} (${code})`
+                : msg
+              : code
+                ? `Sign-in failed (${code}). Please try again.`
+                : 'Sign-in failed. Please try again.';
+        setAuthError(friendly);
       }
     } finally {
       setIsLoading(null);
@@ -147,6 +287,12 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             <h2 className="text-xl serif text-[var(--text-primary)]">Welcome, Seekers</h2>
             <p className="text-xs text-[var(--text-muted)]">Sign in to sync your progress, or explore as a guest.</p>
           </div>
+
+          {authError && (
+            <p className="text-xs text-red-400/90 text-center leading-relaxed px-2" role="alert">
+              {authError}
+            </p>
+          )}
 
           <div className="space-y-4">
             <button 

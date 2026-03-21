@@ -7,14 +7,22 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1082609416678:android:59553a44eca7a292e7fe27",
+        "mobilesdk_app_id": "1:1082609416678:android:279659c7e2ad7e43e7fe27",
         "android_client_info": {
-          "package_name": "com.msrq.senay"
+          "package_name": "com.senay.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "1082609416678-1e3dmrq9k1pmh2dbl3cfrp8v34pakrrq.apps.googleusercontent.com",
+          "client_id": "1082609416678-iu2u58qe89a2lilcbr8devge8pcbj0rr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.senay.app",
+            "certificate_hash": "17492f606edec414442aeb7680bb80b4e3e16c96"
+          }
+        },
+        {
+          "client_id": "1082609416678-b7qapm38f0o0n7livl18d2mfef1g8d95.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
