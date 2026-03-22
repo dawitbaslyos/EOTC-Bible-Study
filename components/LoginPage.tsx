@@ -179,7 +179,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
               : await withTimeout(GoogleAuth.signIn(), 90_000, 'Google sign-in');
           const idToken = googleUser.authentication?.idToken;
           if (!idToken) {
-            throw new Error('Google Sign-In did not return an ID token. Check GoogleAuth serverClientId in capacitor.config.');
+            throw new Error('GOOGLE_NO_TOKEN');
           }
           const accessToken = googleUser.authentication?.accessToken;
           const credential = firebaseGoogleCredential(idToken, accessToken);
@@ -188,7 +188,7 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
             await auth.authStateReady();
             const u = cred.user ?? auth.currentUser;
             if (!u) {
-              throw new Error('Firebase sign-in returned no user.');
+              throw new Error('SIGNIN_NO_USER');
             }
             // Always run app login (welcome + phase) — do not rely only on App’s auth listener on native WebView.
             enterFromFirebaseUser(u);
@@ -249,14 +249,18 @@ const LoginPage: React.FC<Props> = ({ onLogin }) => {
         console.error('OAuth login failed:', err);
         const friendly =
           err?.code === 'auth/invalid-credential' || err?.code === 'auth/account-exists-with-different-credential'
-            ? 'Could not verify your Google account with Firebase. Check SHA-1 / OAuth client in Firebase Console.'
-            : msg
-              ? code && !msg.includes(code)
-                ? `${msg} (${code})`
-                : msg
-              : code
-                ? `Sign-in failed (${code}). Please try again.`
-                : 'Sign-in failed. Please try again.';
+            ? 'Couldn’t verify your Google account. Try again, or use Try as Guest and contact support if it keeps happening.'
+            : err?.message === 'GOOGLE_NO_TOKEN'
+              ? 'Google sign-in didn’t finish. Please try again.'
+              : err?.message === 'SIGNIN_NO_USER'
+                ? 'Sign-in didn’t complete. Please try again.'
+              : msg
+                ? code && !msg.includes(code) && import.meta.env.DEV
+                  ? `${msg} (${code})`
+                  : msg
+                : code && import.meta.env.DEV
+                  ? `Sign-in failed (${code}). Please try again.`
+                  : 'Sign-in failed. Please try again.';
         setAuthError(friendly);
       }
     } finally {

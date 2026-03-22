@@ -126,10 +126,21 @@ const PermissionSetupModal: React.FC<Props> = ({ stats, onFinished, isManualEntr
                 You can change these anytime in <strong className="text-[var(--text-primary)]">Settings → Apps → Senay</strong>.
               </p>
             </div>
-            <div className="text-[11px] font-mono text-[var(--text-muted)] space-y-2 bg-[var(--card-bg)] rounded-xl p-4 border border-theme">
-              <div>Notifications: {status.notifications}</div>
-              <div>Microphone: {status.microphone}</div>
-              <div>Exact alarms: {status.exactAlarms ? 'allowed' : 'not allowed'}</div>
+            <div className="text-[11px] text-[var(--text-secondary)] space-y-2 bg-[var(--card-bg)] rounded-xl p-4 border border-theme">
+              <div>
+                <span className="text-[var(--text-muted)]">Notifications: </span>
+                <span className="text-[var(--text-primary)] font-medium">{status.notifications}</span>
+              </div>
+              <div>
+                <span className="text-[var(--text-muted)]">Microphone: </span>
+                <span className="text-[var(--text-primary)] font-medium">{status.microphone}</span>
+              </div>
+              <div>
+                <span className="text-[var(--text-muted)]">Alarms &amp; reminders: </span>
+                <span className="text-[var(--text-primary)] font-medium">
+                  {status.exactAlarms ? 'Allowed' : 'Not allowed'}
+                </span>
+              </div>
             </div>
             {!status.exactAlarms && (
               <div className="space-y-2">

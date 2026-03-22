@@ -130,10 +130,10 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       </div>
 
       <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
-        Locked apps show a Bible gate from <span className="font-mono">bible-content.json</span> (bundled with Senay).
-        Your place advances each time you finish the gate. When you open Senay again, that reading is added to your{' '}
+        When you open a locked app, Senay shows a short Scripture reading first (from the Bible built into the app).
+        Your place advances each time you finish. When you return to Senay, that reading counts toward your{' '}
         <strong className="text-[var(--text-primary)]">streak and heatmap</strong>
-        {` `}(chapter mode also marks the chapter in your library progress). Choose <strong>five verses</strong> per lock or a{' '}
+        {` `}(in chapter mode, your library progress updates too). Choose <strong>five short readings</strong> per lock or a{' '}
         <strong>full chapter</strong> below.
       </p>
 
@@ -270,14 +270,6 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
               </ul>
             )}
           </div>
-
-          {!state.hasGateReadingContent && (
-            <p className="text-[10px] text-[var(--text-primary)] leading-relaxed rounded-xl p-3 border border-amber-600/45 bg-amber-500/[0.12]">
-              Bible file missing from the app bundle. Run <span className="font-mono font-semibold">npm run build</span> then{' '}
-              <span className="font-mono font-semibold">npx cap sync android</span> so{' '}
-              <span className="font-mono font-semibold">public/data/bible-content.json</span> is copied into the APK.
-            </p>
-          )}
         </div>
       )}
 

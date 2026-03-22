@@ -25,7 +25,8 @@ const config: CapacitorConfig = {
         '1082609416678-b7qapm38f0o0n7livl18d2mfef1g8d95.apps.googleusercontent.com',
       clientId:
         '1082609416678-b7qapm38f0o0n7livl18d2mfef1g8d95.apps.googleusercontent.com',
-      // Android OAuth client (type 1) from google-services.json — native Sign-In + SHA-1.
+      // Android OAuth client (type 1): upload / local debug SHA. google-services.json also lists
+      // Play App Signing client (ak97urfu…) + Google Play SHA — both are merged at build time.
       androidClientId:
         '1082609416678-iu2u58qe89a2lilcbr8devge8pcbj0rr.apps.googleusercontent.com',
       // Extra server auth step often hangs after account/email picker on some devices.

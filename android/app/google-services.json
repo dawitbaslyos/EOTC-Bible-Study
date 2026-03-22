@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1082609416678-ak97urfu2bbmnri3gplbs24cnm3e11hn.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.senay.app",
+            "certificate_hash": "9afd1e0775cc832958591e3a33c2e42936c430b8"
+          }
+        },
+        {
           "client_id": "1082609416678-iu2u58qe89a2lilcbr8devge8pcbj0rr.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {

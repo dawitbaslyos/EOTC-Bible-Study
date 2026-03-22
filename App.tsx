@@ -331,7 +331,7 @@ const App: React.FC = () => {
         notify({
           title: 'Signed in on this device',
           body:
-            'Cloud sync is off until Firebase accepts this Android build. In Firebase Console → Project settings → your Android app, add the debug SHA-1 fingerprint and download a fresh google-services.json.',
+            'Your progress is saved on this phone. Syncing across devices may be available after a future app update.',
           type: 'emotional',
           priority: 'low'
         });
