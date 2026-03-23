@@ -26,8 +26,7 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       const pkgs = Array.isArray(s.packages) ? s.packages : [];
       setState({
         ...s,
-        packages: pkgs,
-        displayOverOtherAppsGranted: s.displayOverOtherAppsGranted ?? true
+        packages: pkgs
       });
 
       if (pkgs.length > 0) {
@@ -220,22 +219,6 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                 </span>
                 <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </button>
-              {!state.displayOverOtherAppsGranted && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void AppLock.openDisplayOverOtherAppsSettings().then(() => load())}
-                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
-                >
-                  <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
-                    {t('appLock.displayOverApps')}
-                  </span>
-                  <span className="text-[10px] font-bold uppercase text-amber-500 shrink-0">
-                    {t('appLock.badgeOff')}
-                  </span>
-                  <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-                </button>
-              )}
             </div>
           </div>
 

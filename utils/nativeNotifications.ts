@@ -56,6 +56,8 @@ export const PRAYER_AFTERNOON_ID = 2002;
 export const OPEN_APP_REMINDER_ID = 2003;
 /** One-shot next 20:00 local when streak ≥ 1 and no session logged today */
 export const STREAK_REMINDER_ID = 2004;
+/** One-shot “did notifications work?” test (cancelled before each new test). */
+export const RITUAL_TEST_NOTIFICATION_ID = 1999;
 
 const DEFAULT_MORNING = { hour: 6, minute: 0 };
 const DEFAULT_EVENING = { hour: 21, minute: 0 };
@@ -68,6 +70,37 @@ function getLocalDateString(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * Schedules a single local notification a few seconds from now (Android/iOS native only).
+ * Default delay: 3 seconds (quick test). Does not affect daily routine alarms.
+ */
+export async function scheduleTestReminderInSeconds(delaySeconds: number = 3): Promise<boolean> {
+  if (!Capacitor.isNativePlatform()) return false;
+
+  const perm = await LocalNotifications.checkPermissions();
+  if (perm.display !== 'granted') {
+    const req = await LocalNotifications.requestPermissions();
+    if (req.display !== 'granted') return false;
+  }
+
+  await ensureChannels();
+
+  await LocalNotifications.cancel({ notifications: [{ id: RITUAL_TEST_NOTIFICATION_ID }] });
+
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: RITUAL_TEST_NOTIFICATION_ID,
+        title: 'Senay — test',
+        body: 'Local notifications are working. Your routine alarms use the same channel.',
+        channelId: PRAYER_CHANNEL_ID,
+        schedule: { at: new Date(Date.now() + delaySeconds * 1000), allowWhileIdle: true }
+      }
+    ]
+  });
+  return true;
 }
 
 async function ensureChannels() {

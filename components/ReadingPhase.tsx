@@ -207,11 +207,6 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
             role="group"
             aria-label={isDailyManna ? t('reading.scriptGroupWudase') : t('reading.scriptGroup')}
           >
-            {isDailyManna && (
-              <span className="text-[6px] md:text-[7px] uppercase tracking-widest text-[var(--text-muted)] text-right leading-tight max-w-[88px]">
-                {t('reading.scriptHintWudase')}
-              </span>
-            )}
             <div className="flex p-0.5 bg-[var(--card-bg)] rounded-full border border-theme shadow-inner max-w-[100vw]">
               {isDailyManna ? (
                 <>
@@ -340,10 +335,20 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
         {data.sections.map((section, sIdx) => (
           <div key={sIdx} className="space-y-12">
             {section.title && (
-              <div className="text-center opacity-50 flex items-center justify-center space-x-4">
-                <div className="h-px w-8 bg-[var(--gold)]"></div>
-                <h3 className="ethiopic text-xl text-[var(--gold)] font-bold">{section.title}</h3>
-                <div className="h-px w-8 bg-[var(--gold)]"></div>
+              <div
+                className={`text-center flex items-center justify-center space-x-4 ${
+                  isDailyManna ? 'opacity-70' : 'opacity-50'
+                }`}
+              >
+                <div className="h-px w-8 bg-[var(--gold)]/50" />
+                <h3
+                  className={`ethiopic text-xl font-bold ${
+                    isDailyManna ? 'text-[var(--text-primary)]' : 'text-[var(--gold)]'
+                  }`}
+                >
+                  {section.title}
+                </h3>
+                <div className="h-px w-8 bg-[var(--gold)]/50" />
               </div>
             )}
             {section.verses.map((v) => {
@@ -363,13 +368,13 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
               ) {
                 const { geez: gzLine, amharic: amLine } = wudaseVerseDualLines(v);
                 const geezClass =
-                  'ethiopic text-xl md:text-2xl leading-[1.85] text-[var(--text-primary)]';
+                  'ethiopic text-xl md:text-2xl leading-[1.85] text-[var(--text-primary)] font-medium';
                 const amClass =
-                  'ethiopic text-xl md:text-2xl leading-[1.85] text-[var(--gold)] italic';
+                  'ethiopic text-[0.95rem] md:text-lg leading-[1.75] text-[var(--text-secondary)] opacity-[0.9]';
                 return (
                   <div key={v.verse} className="space-y-6">
                     <div className="flex items-start gap-4">
-                      <div className="space-y-2 flex-1 border-l border-[var(--gold)]/15 pl-3 md:pl-4">
+                      <div className="space-y-3 flex-1 border-l-2 border-[var(--gold)]/30 pl-3 md:pl-4">
                         {gzLine ? <p className={geezClass}>{gzLine}</p> : null}
                         {amLine ? <p className={amClass}>{amLine}</p> : null}
                         {!gzLine && !amLine ? (
@@ -391,7 +396,7 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
                 body && styleMode === 'english' && isMostlyLatin(body)
                   ? 'serif text-lg md:text-xl leading-relaxed text-[var(--text-secondary)] italic border-l-2 border-[var(--gold)]/20 pl-4 md:pl-6'
                   : styleMode === 'amharic'
-                    ? 'ethiopic text-2xl leading-[1.8] text-[var(--gold)] italic'
+                    ? 'ethiopic text-xl md:text-2xl leading-[1.8] text-[var(--text-primary)] opacity-[0.92]'
                     : 'ethiopic text-2xl leading-[1.8] text-[var(--text-primary)]';
               return (
                 <div key={v.verse} className="space-y-6">
@@ -410,14 +415,23 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
             })}
           </div>
         ))}
+
+        {isDailyManna && data.chapter === 1 && (
+          <div className="mt-16 pt-10 border-t border-[var(--gold)]/20 text-center px-2">
+            <p className="ethiopic text-sm md:text-base leading-relaxed text-[var(--text-secondary)] max-w-md mx-auto">
+              {t('reading.wudaseClosingAmShort')}
+            </p>
+          </div>
+        )}
       </main>
 
       <div className={`fixed bottom-0 left-0 w-full p-6 md:p-12 flex justify-center z-40 transition-all duration-700 ${hasReachedBottom ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
-        <button 
+        <button
+          type="button"
           onClick={onNext}
-          className="bg-[var(--text-primary)] text-[var(--bg-primary)] px-10 md:px-16 py-4 md:py-6 rounded-full font-black shadow-2xl flex items-center space-x-4 hover:scale-105 active:scale-95 transition-all group"
+          className="bg-[var(--text-primary)] text-[var(--bg-primary)] px-8 md:px-14 py-4 md:py-5 rounded-full font-black shadow-2xl hover:scale-105 active:scale-95 transition-all max-w-[min(100%,20rem)]"
         >
-          <span className="serif text-xl tracking-wide">
+          <span className="ethiopic text-base md:text-lg tracking-wide block text-center whitespace-normal break-words leading-snug">
             {isDailyManna
               ? data.chapter === 1
                 ? t('reading.dailyPortion')
@@ -426,7 +440,6 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
                   : t('reading.summarize')
               : t('reading.finishScroll')}
           </span>
-          <Icons.ChevronRight className="group-hover:translate-x-1 transition-transform text-[var(--gold)]" />
         </button>
       </div>
     </div>

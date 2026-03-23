@@ -282,6 +282,11 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                 removeOverlay();
                 return;
             }
+
+            if (!AppLockPrefs.mayShowGateToday(this, packageName)) {
+                removeOverlay();
+                return;
+            }
         }
 
         showOverlay(packageName);
@@ -428,10 +433,11 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
             overlayViewRef.set(overlay);
             try {
                 windowManager.addView(overlay, params);
+                AppLockPrefs.recordGateOverlayShown(this, blockedPackage);
             } catch (Exception e) {
                 overlayViewRef.set(null);
                 overlayTargetPackage = null;
-                if (tryAddApplicationOverlayFallback(overlay, params)) {
+                if (tryAddApplicationOverlayFallback(overlay, params, blockedPackage)) {
                     return;
                 }
             }
@@ -458,7 +464,8 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
      * When accessibility overlay is blocked, use {@link WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY}
      * if the user granted "Display over other apps".
      */
-    private boolean tryAddApplicationOverlayFallback(View overlay, WindowManager.LayoutParams ignored) {
+    private boolean tryAddApplicationOverlayFallback(
+            View overlay, WindowManager.LayoutParams ignored, String blockedPackage) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || !Settings.canDrawOverlays(this)) {
             return false;
         }
@@ -480,6 +487,7 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
             overlayViewRef.set(overlay);
             try {
                 windowManager.addView(overlay, p2);
+                AppLockPrefs.recordGateOverlayShown(this, blockedPackage);
                 return true;
             } catch (Exception e2) {
                 overlayViewRef.set(null);

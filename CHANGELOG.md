@@ -1,5 +1,11 @@
 # Changelog - Complete App Enhancement
 
+## 1.0.2 — Third update (Mar 2026)
+
+- **Ask Memhir**: Screen shows **Coming soon** while the full guidance experience is prepared.
+- **Focus lock (Android)**: Reading gate appears at most **7 times per calendar day per locked app** to avoid spamming; after that the app opens without the gate until the next day.
+- General polish and version bump for store release.
+
 ## 🎉 Major Updates
 
 ### ✅ Capacitor Integration (Fixed)

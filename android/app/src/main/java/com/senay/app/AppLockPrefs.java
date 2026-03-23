@@ -7,8 +7,10 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 /**
@@ -27,7 +29,11 @@ public final class AppLockPrefs {
     /** Pass is valid for this long after the user taps Finish on the overlay (per locked package). */
     public static final long GATE_PASS_VALID_MS = 2L * 60L * 60L * 1000L;
 
+    /** Max times per calendar day the reading gate may appear per locked app (anti-spam). */
+    public static final int MAX_GATE_VIEWS_PER_DAY = 7;
+
     private static final String KEY_UNLOCK_PREFIX = "gate_unlock_ms_";
+    private static final String KEY_GATE_VIEWS_DAY_PREFIX = "gate_views_day_";
     /** JSON array of { bookId, chapter, mode } queued for JS to merge into reading stats. */
     private static final String KEY_PENDING_GATE_QUEUE = "pending_gate_queue";
 
@@ -40,6 +46,39 @@ public final class AppLockPrefs {
     private static String safePkg(String packageName) {
         if (packageName == null) return "";
         return packageName.replace('.', '_');
+    }
+
+    private static String todayLocalYyyyMMdd() {
+        Calendar c = Calendar.getInstance();
+        int y = c.get(Calendar.YEAR);
+        int m = c.get(Calendar.MONTH) + 1;
+        int d = c.get(Calendar.DAY_OF_MONTH);
+        return String.format(Locale.US, "%04d%02d%02d", y, m, d);
+    }
+
+    private static String gateViewsKey(String packageName) {
+        return KEY_GATE_VIEWS_DAY_PREFIX + todayLocalYyyyMMdd() + "_" + safePkg(packageName);
+    }
+
+    /**
+     * Whether the gate may be shown today for this package (under daily view cap).
+     */
+    public static boolean mayShowGateToday(Context ctx, String packageName) {
+        if (packageName == null || packageName.isEmpty()) return false;
+        synchronized (GATE_STATE_LOCK) {
+            int n = p(ctx).getInt(gateViewsKey(packageName), 0);
+            return n < MAX_GATE_VIEWS_PER_DAY;
+        }
+    }
+
+    /** Call once each time the overlay is successfully added (counts toward daily cap per app). */
+    public static void recordGateOverlayShown(Context ctx, String packageName) {
+        if (packageName == null) return;
+        synchronized (GATE_STATE_LOCK) {
+            String k = gateViewsKey(packageName);
+            int n = p(ctx).getInt(k, 0);
+            p(ctx).edit().putInt(k, n + 1).apply();
+        }
     }
 
     public static boolean isEnabled(Context ctx) {
