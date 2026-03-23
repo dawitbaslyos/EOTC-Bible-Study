@@ -39,7 +39,7 @@ public final class BibleGateNavigator {
             StringBuilder sb = new StringBuilder();
             sb.append("<div style=\"margin-bottom:18px;\">");
             if (number > 0) {
-                sb.append("<span style=\"color:#888;font-size:11px;\">").append(number).append("</span>");
+                sb.append("<span style=\"color:#94a3b8;font-size:12px;font-weight:700;\">").append(number).append("</span>");
             }
             if (geez != null && !geez.isEmpty()) {
                 sb.append("<p style=\"font-size:17px;line-height:1.65;margin-top:6px;\">")

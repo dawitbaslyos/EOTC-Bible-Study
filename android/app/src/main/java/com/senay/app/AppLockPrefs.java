@@ -15,6 +15,10 @@ import java.util.Set;
  * Persisted config for focus lock + per-app gate passes.
  */
 public final class AppLockPrefs {
+
+    /** Guards pass / "left" reads and writes across the service and UI threads. */
+    static final Object GATE_STATE_LOCK = new Object();
+
     private static final String PREFS = "senay_app_lock";
     private static final String KEY_ENABLED = "enabled";
     private static final String KEY_MODE = "mode"; // legacy, unused by overlay gate
@@ -74,17 +78,23 @@ public final class AppLockPrefs {
     }
 
     public static boolean isUserLeftSinceUnlock(Context ctx, String packageName) {
-        return p(ctx).getBoolean(KEY_LEFT_PREFIX + safePkg(packageName), false);
+        synchronized (GATE_STATE_LOCK) {
+            return p(ctx).getBoolean(KEY_LEFT_PREFIX + safePkg(packageName), false);
+        }
     }
 
     public static void markUserLeftLockedApp(Context ctx, String packageName) {
         if (packageName == null) return;
         if (!isLockedPackage(ctx, packageName)) return;
-        p(ctx).edit().putBoolean(KEY_LEFT_PREFIX + safePkg(packageName), true).apply();
+        synchronized (GATE_STATE_LOCK) {
+            p(ctx).edit().putBoolean(KEY_LEFT_PREFIX + safePkg(packageName), true).apply();
+        }
     }
 
     public static long getLastGateUnlockTime(Context ctx, String packageName) {
-        return p(ctx).getLong(KEY_UNLOCK_PREFIX + safePkg(packageName), 0L);
+        synchronized (GATE_STATE_LOCK) {
+            return p(ctx).getLong(KEY_UNLOCK_PREFIX + safePkg(packageName), 0L);
+        }
     }
 
     /**
@@ -93,19 +103,23 @@ public final class AppLockPrefs {
     public static void recordGateCompletion(Context ctx, String packageName) {
         if (packageName == null) return;
         String k = safePkg(packageName);
-        p(ctx).edit()
-                .putLong(KEY_UNLOCK_PREFIX + k, System.currentTimeMillis())
-                .putBoolean(KEY_LEFT_PREFIX + k, false)
-                .apply();
+        synchronized (GATE_STATE_LOCK) {
+            p(ctx).edit()
+                    .putLong(KEY_UNLOCK_PREFIX + k, System.currentTimeMillis())
+                    .putBoolean(KEY_LEFT_PREFIX + k, false)
+                    .apply();
+        }
     }
 
     public static boolean hasValidGatePass(Context ctx, String packageName) {
-        if (!isLockedPackage(ctx, packageName)) return true;
-        long t = getLastGateUnlockTime(ctx, packageName);
-        if (t <= 0L) return false;
-        if (isUserLeftSinceUnlock(ctx, packageName)) return false;
-        long age = System.currentTimeMillis() - t;
-        return age < GATE_PASS_VALID_MS;
+        synchronized (GATE_STATE_LOCK) {
+            if (!isLockedPackage(ctx, packageName)) return true;
+            long t = p(ctx).getLong(KEY_UNLOCK_PREFIX + safePkg(packageName), 0L);
+            if (t <= 0L) return false;
+            if (p(ctx).getBoolean(KEY_LEFT_PREFIX + safePkg(packageName), false)) return false;
+            long age = System.currentTimeMillis() - t;
+            return age < GATE_PASS_VALID_MS;
+        }
     }
 
     public static void enqueuePendingGateCompletion(Context ctx, JSONObject row) {

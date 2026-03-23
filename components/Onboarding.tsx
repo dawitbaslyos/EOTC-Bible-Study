@@ -1,34 +1,52 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Icons } from '../constants';
+import { useAppLanguage } from '../contexts/AppLanguageContext';
 import { RitualTime } from '../types';
 
 interface Props {
   onComplete: (rituals: RitualTime[]) => void;
+  /** Android: register handler for hardware back (step back, then exit on first step). */
+  bindAndroidBack?: (handler: () => boolean) => void;
 }
 
-const steps = [
-  {
-    title: "Welcome",
-    body: "Explore the 81 books of the Ethiopian Orthodox Bible with daily guidance.",
-    icon: <Icons.Logo className="w-16 h-16 object-contain" />
-  },
-  {
-    title: "Understand the Bible",
-    body: "Read traditional explanations for verses and get answers to your questions.",
-    icon: <Icons.Book className="w-10 h-10" />
-  },
-  {
-    title: "Your Routine",
-    body: "Choose when you would like to do your daily reading.",
-    icon: <Icons.Feather className="w-10 h-10" />,
-    isInteractive: true
-  }
-];
-
-const Onboarding: React.FC<Props> = ({ onComplete }) => {
+const Onboarding: React.FC<Props> = ({ onComplete, bindAndroidBack }) => {
+  const { t } = useAppLanguage();
+  const steps = useMemo(
+    () => [
+      {
+        title: t('onboarding.step1Title'),
+        body: t('onboarding.step1Body'),
+        icon: <Icons.Logo className="w-16 h-16 object-contain" />
+      },
+      {
+        title: t('onboarding.step2Title'),
+        body: t('onboarding.step2Body'),
+        icon: <Icons.Book className="w-10 h-10" />
+      },
+      {
+        title: t('onboarding.step3Title'),
+        body: t('onboarding.step3Body'),
+        icon: <Icons.Feather className="w-10 h-10" />,
+        isInteractive: true
+      }
+    ],
+    [t]
+  );
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedRituals, setSelectedRituals] = useState<RitualTime[]>(['day']);
+
+  useEffect(() => {
+    if (!bindAndroidBack) return;
+    bindAndroidBack(() => {
+      if (currentStep > 0) {
+        setCurrentStep((s) => s - 1);
+        return true;
+      }
+      return false;
+    });
+    return () => bindAndroidBack(() => false);
+  }, [currentStep, bindAndroidBack]);
 
   const toggleRitual = (r: RitualTime) => {
     setSelectedRituals(prev => {
@@ -67,8 +85,8 @@ const Onboarding: React.FC<Props> = ({ onComplete }) => {
         {isLastStep && (
           <div className="grid grid-cols-1 gap-4 animate-in fade-in zoom-in duration-700 delay-300">
             {[
-              { id: 'day' as RitualTime, label: 'Morning', desc: 'Start your day with a reading', icon: <Icons.Sun className="w-5 h-5" /> },
-              { id: 'night' as RitualTime, label: 'Evening', desc: 'Read before you sleep', icon: <Icons.Moon className="w-5 h-5" /> }
+              { id: 'day' as RitualTime, label: t('onboarding.morning'), desc: t('onboarding.morningDesc'), icon: <Icons.Sun className="w-5 h-5" /> },
+              { id: 'night' as RitualTime, label: t('onboarding.evening'), desc: t('onboarding.eveningDesc'), icon: <Icons.Moon className="w-5 h-5" /> }
             ].map(r => {
               const active = selectedRituals.includes(r.id);
               return (
@@ -108,7 +126,7 @@ const Onboarding: React.FC<Props> = ({ onComplete }) => {
             onClick={next} 
             className="w-full bg-[var(--gold)] text-black font-bold py-5 rounded-full hover:brightness-110 transition-all flex items-center justify-center space-x-3 shadow-xl active:scale-95"
           >
-            <span className="serif text-lg">{isLastStep ? "Get Started" : "Next"}</span>
+            <span className="serif text-lg">{isLastStep ? t('onboarding.getStarted') : t('onboarding.next')}</span>
             <Icons.ChevronRight className="w-5 h-5" />
           </button>
         </div>

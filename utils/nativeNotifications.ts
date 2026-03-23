@@ -54,9 +54,21 @@ const EVENTS_CHANNEL_ID = 'senay_app_events';
 export const PRAYER_MORNING_ID = 2001;
 export const PRAYER_AFTERNOON_ID = 2002;
 export const OPEN_APP_REMINDER_ID = 2003;
+/** One-shot next 20:00 local when streak ≥ 1 and no session logged today */
+export const STREAK_REMINDER_ID = 2004;
 
 const DEFAULT_MORNING = { hour: 6, minute: 0 };
 const DEFAULT_EVENING = { hour: 21, minute: 0 };
+
+const STREAK_FIRE_HOUR = 20;
+const STREAK_FIRE_MINUTE = 0;
+
+function getLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
 
 async function ensureChannels() {
   await LocalNotifications.createChannel({
@@ -166,6 +178,47 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
   }
 
   return true;
+}
+
+/**
+ * Schedules a single local notification at the next 8:00 PM when the user has an active streak
+ * but has not logged any reading session today; cancels otherwise.
+ */
+export async function syncStreakReminderFromStats(stats: UserStats): Promise<void> {
+  if (!Capacitor.isNativePlatform()) return;
+
+  await LocalNotifications.cancel({ notifications: [{ id: STREAK_REMINDER_ID }] });
+
+  const now = new Date();
+  const todayStr = getLocalDateString(now);
+  const sessionsToday = stats.studyHistory[todayStr] ?? 0;
+  if ((stats.streak ?? 0) < 1 || sessionsToday > 0) return;
+
+  const perm = await LocalNotifications.checkPermissions();
+  if (perm.display !== 'granted') {
+    const req = await LocalNotifications.requestPermissions();
+    if (req.display !== 'granted') return;
+  }
+
+  await ensureChannels();
+
+  const at = new Date(now);
+  at.setHours(STREAK_FIRE_HOUR, STREAK_FIRE_MINUTE, 0, 0);
+  if (at.getTime() <= now.getTime()) {
+    at.setDate(at.getDate() + 1);
+  }
+
+  await LocalNotifications.schedule({
+    notifications: [
+      {
+        id: STREAK_REMINDER_ID,
+        title: "Don't lose your streak",
+        body: `You have a ${stats.streak}-day streak. Open Senay for today's reading before the day ends.`,
+        channelId: EVENTS_CHANNEL_ID,
+        schedule: { at, allowWhileIdle: true }
+      }
+    ]
+  });
 }
 
 /**

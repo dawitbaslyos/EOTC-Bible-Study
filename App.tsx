@@ -1,6 +1,17 @@
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AppPhase, WudaseLiturgy, DailyManna, Quote, BibleBookJSON, UserStats, Theme, RitualTime, Book } from './types';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import {
+  AppPhase,
+  WudaseLiturgy,
+  WudaseMelaketBlock,
+  DailyManna,
+  Quote,
+  BibleBookJSON,
+  UserStats,
+  Theme,
+  RitualTime,
+  Book
+} from './types';
 import Dashboard from './components/Dashboard';
 import PreparationPhase from './components/PreparationPhase';
 import ReadingPhase from './components/ReadingPhase';
@@ -15,14 +26,18 @@ import { useNotifications } from './hooks/useNotifications';
 import {
   sendWelcomeNotification,
   syncRitualRemindersFromStats,
-  rescheduleOpenAppReminder
+  rescheduleOpenAppReminder,
+  syncStreakReminderFromStats
 } from './utils/nativeNotifications';
+import { runDailyBehaviorNotifications } from './utils/notificationBehaviors';
 import { pickDailyQuoteFromBible } from './utils/dailyQuoteFromBible';
 import { isAndroidNative } from './utils/appPermissions';
+import { setAndroidBackHandler } from './utils/androidBackHandler';
 import PermissionSetupModal, { ANDROID_PERMISSIONS_DONE_KEY } from './components/PermissionSetupModal';
 import type { User as FirebaseUser } from 'firebase/auth';
 import { getRedirectResult, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebaseClient';
+import { useAppLanguage } from './contexts/AppLanguageContext';
 
 interface UserProfile {
   name: string;
@@ -77,6 +92,7 @@ function resolveCloudUid(user: UserProfile | null): string | null {
 }
 
 const App: React.FC = () => {
+  const { t } = useAppLanguage();
   // One-time hydrate from localStorage. Async bootstrap must NOT re-read storage (Android race with Google sign-in).
   const [user, setUser] = useState<UserProfile | null>(() => readUserFromStorage());
   const [phase, setPhase] = useState<AppPhase>(AppPhase.DASHBOARD);
@@ -88,6 +104,7 @@ const App: React.FC = () => {
   );
 
   const [liturgy, setLiturgy] = useState<WudaseLiturgy | null>(null);
+  const [yewedesewMelaket, setYewedesewMelaket] = useState<WudaseMelaketBlock | null>(null);
   const [bibleData, setBibleData] = useState<BibleBookJSON[] | null>(null);
   const [allBooks, setAllBooks] = useState<Book[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
@@ -132,13 +149,15 @@ const App: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [litRes, bibleRes, booksRes] = await Promise.all([
+        const [litRes, yewRes, bibleRes, booksRes] = await Promise.all([
           fetch('./data/wudase-liturgy.json'),
+          fetch('./data/yewedesewamelaket.json'),
           fetch('./data/bible-content.json'),
           fetch('./data/80-weahadu.json')
         ]);
 
         if (litRes.ok) setLiturgy(await litRes.json());
+        if (yewRes.ok) setYewedesewMelaket(await yewRes.json());
 
         const bibleJson: BibleBookJSON[] | null = bibleRes.ok ? await bibleRes.json() : null;
         const weahaduJson: Book[] | null = booksRes.ok ? await booksRes.json() : null;
@@ -311,6 +330,7 @@ const App: React.FC = () => {
     };
     saveStats(next);
     syncRitualRemindersFromStats(next).catch(() => {});
+    syncStreakReminderFromStats(next).catch(() => {});
   };
 
   const handleLogin = useCallback((profile: UserProfile) => {
@@ -342,6 +362,7 @@ const App: React.FC = () => {
       });
 
       syncRitualRemindersFromStats(stats).catch(() => {});
+      syncStreakReminderFromStats(stats).catch(() => {});
     } catch (e) {
       console.error('handleLogin failed:', e);
     }
@@ -358,6 +379,31 @@ const App: React.FC = () => {
     JSON.stringify(stats.preferredRituals ?? []),
     JSON.stringify(stats.ritualReminderTimes ?? {})
   ]);
+
+  // Native: streak nudge at next 8 PM when streak ≥ 1 and no session today.
+  useEffect(() => {
+    if (!user || !hasSeenOnboarding) return;
+    syncStreakReminderFromStats(stats).catch(() => {});
+  }, [user?.uid, hasSeenOnboarding, stats]);
+
+  // In-app (and mirrored tray) streak / routine behaviors; re-check on visibility and every minute
+  // so crossing the ritual time while the app stays open still enqueues the reminder.
+  useEffect(() => {
+    if (!user || !hasSeenOnboarding) return;
+
+    const tick = () => runDailyBehaviorNotifications(stats, notify);
+
+    tick();
+    const intervalId = window.setInterval(tick, 60_000);
+    const onVis = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [user?.uid, hasSeenOnboarding, notify, stats]);
 
   // Android: merge focus-lock overlay readings into heatmap / streak when app returns to foreground.
   useEffect(() => {
@@ -420,7 +466,7 @@ const App: React.FC = () => {
     setIsDrawerOpen(false);
   };
 
-  const goToPhase = (newPhase: AppPhase, instant: boolean = false) => {
+  const goToPhase = useCallback((newPhase: AppPhase, instant: boolean = false) => {
     if (instant) {
       setPhase(newPhase);
       window.scrollTo({ top: 0, behavior: 'auto' });
@@ -432,20 +478,126 @@ const App: React.FC = () => {
       setShowTransition(false);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 400);
-  };
+  }, []);
 
-  const getWudasePortion = (lit: WudaseLiturgy, chapter: number): DailyManna => {
+  const onboardingBackRef = useRef<() => boolean>(() => false);
+  const loginBackRef = useRef<() => boolean>(() => false);
+
+  const bindOnboardingAndroidBack = useCallback((fn: () => boolean) => {
+    onboardingBackRef.current = fn;
+  }, []);
+
+  const bindLoginAndroidBack = useCallback((fn: () => boolean) => {
+    loginBackRef.current = fn;
+  }, []);
+
+  const closeSettings = useCallback(() => {
+    syncRitualRemindersFromStats(stats).catch(() => {});
+    syncStreakReminderFromStats(stats).catch(() => {});
+    goToPhase(AppPhase.DASHBOARD);
+  }, [stats, goToPhase]);
+
+  useEffect(() => {
+    if (!isAndroidNative()) return;
+
+    setAndroidBackHandler(() => {
+      if (!hasSeenOnboarding) return onboardingBackRef.current();
+      if (!user) return loginBackRef.current();
+
+      if (androidPermissionOpen) {
+        setAndroidPermissionOpen(false);
+        setAndroidPermissionManual(false);
+        return true;
+      }
+      if (isNotificationOpen) {
+        setIsNotificationOpen(false);
+        return true;
+      }
+      if (isDrawerOpen) {
+        setIsDrawerOpen(false);
+        return true;
+      }
+
+      switch (phase) {
+        case AppPhase.SETTINGS:
+          closeSettings();
+          return true;
+        case AppPhase.ASK_MEMHIR:
+          goToPhase(AppPhase.DASHBOARD);
+          return true;
+        case AppPhase.SUMMARY:
+          goToPhase(AppPhase.READING);
+          return true;
+        case AppPhase.READING:
+          goToPhase(AppPhase.DASHBOARD);
+          return true;
+        case AppPhase.PREPARATION:
+          goToPhase(AppPhase.DASHBOARD);
+          return true;
+        case AppPhase.DASHBOARD:
+        default:
+          return false;
+      }
+    });
+
+    return () => setAndroidBackHandler(null);
+  }, [
+    hasSeenOnboarding,
+    user,
+    phase,
+    isDrawerOpen,
+    isNotificationOpen,
+    androidPermissionOpen,
+    closeSettings,
+    goToPhase
+  ]);
+
+  const getWudasePortion = (lit: WudaseLiturgy, chapter: number, melaket: WudaseMelaketBlock | null): DailyManna => {
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const todayName = days[new Date().getDay()];
     const portion = lit.portions[todayName];
+    const totalChapters = 3;
+
+    if (chapter === 1) {
+      return {
+        title: 'Standard Prayers',
+        bookId: 'wudase',
+        bookName: 'ውዳሴ ማርያም',
+        chapter: 1,
+        totalChapters,
+        sections: lit.yezewetir.sections,
+        liturgicalSeason: todayName
+      };
+    }
+
+    if (chapter === 3) {
+      const ab = lit.anqaseBerhan;
+      const prefixSections = melaket?.sections?.length ? [...melaket.sections] : [];
+      let abSections = [...(ab?.sections || [])];
+      if (abSections.length && !abSections[0].title?.trim()) {
+        abSections = [
+          { ...abSections[0], title: ab?.title || 'አንቀጸ ብርሃን' },
+          ...abSections.slice(1)
+        ];
+      }
+      return {
+        title: ab?.title || 'አንቀጸ ብርሃን',
+        bookId: 'wudase',
+        bookName: 'ውዳሴ ማርያም',
+        chapter: 3,
+        totalChapters,
+        sections: [...prefixSections, ...abSections],
+        liturgicalSeason: todayName
+      };
+    }
 
     return {
-      title: chapter === 1 ? "Standard Prayers" : (portion?.dayName || `${todayName} Portion`),
+      title: portion?.dayName || `${todayName} Portion`,
       bookId: 'wudase',
       bookName: 'ውዳሴ ማርያም',
-      chapter: chapter,
-      totalChapters: 2,
-      sections: chapter === 1 ? lit.yezewetir.sections : (portion?.sections || []),
+      chapter: 2,
+      totalChapters,
+      sections: portion?.sections || [],
       liturgicalSeason: todayName
     };
   };
@@ -456,7 +608,7 @@ const App: React.FC = () => {
     
     if (isWudase && liturgy) {
       const ch = specificChapter || 1;
-      setReadingData(getWudasePortion(liturgy, ch));
+      setReadingData(getWudasePortion(liturgy, ch, yewedesewMelaket));
       goToPhase(ch === 1 ? AppPhase.PREPARATION : AppPhase.READING, isInstant);
     } else if (bibleData) {
       updateLastAccessed(bookId);
@@ -478,21 +630,41 @@ const App: React.FC = () => {
     }
   };
 
-  const handleFinishReading = () => {
+  const handleFinishReading = useCallback(() => {
     if (readingData) {
+      const isBibleBook = readingData.bookId !== 'wudase';
+      const prev = stats.bookProgress[readingData.bookId]?.completedChapters || [];
+      const alreadyHadChapter = prev.includes(readingData.chapter);
+      const done = new Set(prev);
+      done.add(readingData.chapter);
+      const willCompleteBook =
+        isBibleBook &&
+        readingData.totalChapters > 0 &&
+        !alreadyHadChapter &&
+        done.size === readingData.totalChapters;
+
       completeChapter(readingData.bookId, readingData.chapter);
+
+      if (willCompleteBook) {
+        notify({
+          title: 'You finished the book',
+          body: `${readingData.title} — well done. May the words continue to bear fruit in your life.`,
+          type: 'success',
+          priority: 'high'
+        });
+      }
     }
     goToPhase(AppPhase.DASHBOARD);
-  };
+  }, [readingData, stats.bookProgress, completeChapter, notify, goToPhase]);
 
   // 1. First Priority: Onboarding
   if (!hasSeenOnboarding) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding onComplete={handleOnboardingComplete} bindAndroidBack={bindOnboardingAndroidBack} />;
   }
 
   // 2. Second Priority: Login
   if (!user) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} bindAndroidBack={bindLoginAndroidBack} />;
   }
 
   // 3. Final: Main App
@@ -520,10 +692,7 @@ const App: React.FC = () => {
 
         {phase === AppPhase.SETTINGS && (
           <SettingsPage 
-            onClose={() => {
-              syncRitualRemindersFromStats(stats).catch(() => {});
-              goToPhase(AppPhase.DASHBOARD);
-            }}
+            onClose={closeSettings}
             theme={theme}
             setTheme={setTheme}
             rituals={stats.preferredRituals || ['day']}
@@ -556,7 +725,15 @@ const App: React.FC = () => {
           <ReadingPhase 
             data={readingData} 
             isDailyManna={isDailyWudase}
-            onNext={() => isDailyWudase && readingData.chapter === 1 ? startFlow('wudase', true, 2) : (isDailyWudase ? goToPhase(AppPhase.SUMMARY) : handleFinishReading())} 
+            onNext={() => {
+              if (!isDailyWudase || !readingData) {
+                handleFinishReading();
+                return;
+              }
+              if (readingData.chapter === 1) startFlow('wudase', true, 2);
+              else if (readingData.chapter === 2) startFlow('wudase', true, 3);
+              else goToPhase(AppPhase.SUMMARY);
+            }}
             onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)}
             onFinish={() => goToPhase(AppPhase.DASHBOARD)}
             onSelectChapter={(chapter) => startFlow(readingData.bookId, false, chapter)}
@@ -564,10 +741,7 @@ const App: React.FC = () => {
         )}
 
         {phase === AppPhase.SUMMARY && (
-          <SummaryPhase 
-            wudaseAmlakText={liturgy?.wudaseAmlak || "Praises of the Almighty..."}
-            onFinish={handleFinishReading}
-          />
+          <SummaryPhase reflectionText={t('summary.wudasePrayerPrompt')} onFinish={handleFinishReading} />
         )}
 
         <NotificationCenter isOpen={isNotificationOpen} notifications={notifications} onClose={() => setIsNotificationOpen(false)} onMarkRead={markAsRead} onClearAll={clearAll} />

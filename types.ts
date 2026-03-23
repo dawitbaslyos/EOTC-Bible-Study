@@ -12,6 +12,15 @@ export enum AppPhase {
 export type Theme = 'dark' | 'light';
 export type RitualTime = 'day' | 'night';
 
+/** UI + primary reading translation preference (Settings). Default: English. */
+export type AppContentLanguage = 'english' | 'amharic';
+
+/**
+ * In-reader script (segmented toggle on reading screen).
+ * `geez_amharic` is legacy storage only; daily Wudase uses {@link LanguageVisibility} (G + A toggles).
+ */
+export type ReadingScriptMode = 'geez' | 'amharic' | 'english' | 'geez_amharic';
+
 export type Testament = 'All' | 'Old' | 'New';
 export type BookCategory = 'Law' | 'History' | 'Wisdom' | 'Prophets' | 'Gospels' | 'Epistles' | 'Revelation';
 
@@ -25,6 +34,8 @@ export interface BibleVerseJSON {
   verse: number;
   text: string;
   geez?: string;
+  /** Amharic line when present (e.g. Wudase JSON); falls back to `text`. */
+  amharic?: string;
   english?: string;
   commentary?: Commentary[];
 }
@@ -68,6 +79,12 @@ export interface WudasePortion {
   sections: BibleSectionJSON[];
 }
 
+/** Standalone JSON `./data/yewedesewamelaket.json` — prepended before አንቀጸ ብርሃን on Wudase ch.3. */
+export interface WudaseMelaketBlock {
+  title: string;
+  sections: BibleSectionJSON[];
+}
+
 export interface WudaseLiturgy {
   opening: string;
   yezewetir: {
@@ -75,7 +92,13 @@ export interface WudaseLiturgy {
     sections: BibleSectionJSON[];
   };
   portions: Record<string, WudasePortion>;
-  wudaseAmlak: string;
+  /** Legacy; kept empty. አንቀጸ ብርሃን text lives in `anqaseBerhan` (reading chapter 3). */
+  wudaseAmlak?: string;
+  /** Closing liturgy "አንቀጸ ብርሃን" — same reading UI as daily portion (chapter 3). */
+  anqaseBerhan: {
+    title: string;
+    sections: BibleSectionJSON[];
+  };
   closing: string;
   bowingInstructions: string;
 }

@@ -2,6 +2,8 @@ import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
+import { AppLanguageProvider } from './contexts/AppLanguageContext';
 import { initCapacitor } from './utils/capacitorInit';
 
 const rootElement = document.getElementById('root');
@@ -14,6 +16,10 @@ void initCapacitor();
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <AppLanguageProvider>
+        <App />
+      </AppLanguageProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 );

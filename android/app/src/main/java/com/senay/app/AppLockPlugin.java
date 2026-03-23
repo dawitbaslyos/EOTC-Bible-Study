@@ -6,6 +6,8 @@ import android.content.Intent;
 import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
+import android.net.Uri;
+import android.os.Build;
 import android.provider.Settings;
 import android.text.TextUtils;
 
@@ -39,6 +41,8 @@ public class AppLockPlugin extends Plugin {
         ret.put("packages", jsonFromSet(AppLockPrefs.getLockedPackages(ctx)));
         ret.put("hasGateReadingContent", BibleGateNavigator.assetExists(ctx));
         ret.put("accessibilityServiceEnabled", isAccessibilityServiceEnabled(ctx));
+        ret.put("usageStatsPermissionGranted", UsageStatsHelper.hasUsageAccess(ctx));
+        ret.put("displayOverOtherAppsGranted", canDrawOverlays(ctx));
         call.resolve(ret);
     }
 
@@ -80,6 +84,43 @@ public class AppLockPlugin extends Plugin {
         Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
+        call.resolve();
+    }
+
+    /** Settings → Special app access → Usage access (official foreground detection). */
+    @PluginMethod
+    public void openUsageAccessSettings(PluginCall call) {
+        Intent intent = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try {
+            getContext().startActivity(intent);
+        } catch (Exception e) {
+            Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            fallback.setData(Uri.parse("package:" + getContext().getPackageName()));
+            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(fallback);
+        }
+        call.resolve();
+    }
+
+    /** Display over other apps — some OEMs tie full-screen overlays to this grant. */
+    @PluginMethod
+    public void openDisplayOverOtherAppsSettings(PluginCall call) {
+        Context ctx = getContext();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            Intent intent = new Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + ctx.getPackageName()));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                ctx.startActivity(intent);
+            } catch (Exception e) {
+                Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                fallback.setData(Uri.parse("package:" + ctx.getPackageName()));
+                fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                ctx.startActivity(fallback);
+            }
+        }
         call.resolve();
     }
 
@@ -215,5 +256,12 @@ public class AppLockPlugin extends Plugin {
             }
         }
         return false;
+    }
+
+    private static boolean canDrawOverlays(Context ctx) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            return true;
+        }
+        return Settings.canDrawOverlays(ctx);
     }
 }

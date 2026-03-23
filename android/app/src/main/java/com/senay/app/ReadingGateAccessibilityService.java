@@ -2,9 +2,11 @@ package com.senay.app;
 
 import android.accessibilityservice.AccessibilityService;
 import android.graphics.PixelFormat;
+import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.provider.Settings;
 import android.text.Html;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -12,6 +14,7 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -19,27 +22,36 @@ import android.widget.TextView;
 
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Two-step gate: (1) prompt + "Unlock app" (2) Bible passage from assets, scroll, then open locked app.
- * Progress is stored in {@link GateBibleProgress}; mode paragraph vs chapter from {@link AppLockPrefs#getMode}.
+ * Detection: multi-window scan + merged UsageStats/accessibility root; overlay: accessibility overlay with
+ * {@link WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY} fallback when allowed.
  */
 public class ReadingGateAccessibilityService extends AccessibilityService {
 
     public static final String PACKAGE_SENAY = "com.senay.app";
 
-    private static final long EVALUATE_DEBOUNCE_MS = 320L;
+    private static final long EVALUATE_DEBOUNCE_MS = 75L;
+    /** Second pass catches rapid app switches before usage stats / focus settle. */
+    private static final long FOLLOW_UP_EVALUATE_MS = 170L;
     private static final int SCROLL_END_SLACK_PX = 48;
 
     private static final ExecutorService GATE_IO = Executors.newSingleThreadExecutor();
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable debouncedEvaluate = this::evaluateAfterDebounce;
+    private final Runnable followUpEvaluate = this::evaluateAfterDebounce;
+    private final Object overlayLock = new Object();
     private WindowManager windowManager;
-    private View overlayView;
-    private String overlayTargetPackage;
+    private final AtomicReference<View> overlayViewRef = new AtomicReference<>();
+    private volatile String overlayTargetPackage;
     private String lastStableForeground;
 
     @Override
@@ -50,12 +62,32 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
-        if (event == null) return;
-        if (event.getEventType() != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+        if (event == null) {
             return;
         }
+        int type = event.getEventType();
+        if (type == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) {
+            scheduleEvaluation();
+            return;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP
+                && type == AccessibilityEvent.TYPE_WINDOWS_CHANGED) {
+            scheduleEvaluation();
+            return;
+        }
+        if (type == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
+            CharSequence p = event.getPackageName();
+            if (p != null && AppLockPrefs.isLockedPackage(this, p.toString())) {
+                scheduleEvaluation();
+            }
+        }
+    }
+
+    private void scheduleEvaluation() {
         mainHandler.removeCallbacks(debouncedEvaluate);
+        mainHandler.removeCallbacks(followUpEvaluate);
         mainHandler.postDelayed(debouncedEvaluate, EVALUATE_DEBOUNCE_MS);
+        mainHandler.postDelayed(followUpEvaluate, EVALUATE_DEBOUNCE_MS + FOLLOW_UP_EVALUATE_MS);
     }
 
     private void evaluateAfterDebounce() {
@@ -66,17 +98,66 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
         evaluateForeground(packageName);
     }
 
-    private String resolveForegroundPackage() {
-        AccessibilityNodeInfo root = null;
+    /**
+     * Lock screen / keyguard / system UI: do not count as "user left" the locked app.
+     * Settings and installers still count as leaving (stricter pass invalidation).
+     */
+    private static boolean isTransientForegroundNavigation(String packageName) {
+        if (packageName == null || packageName.isEmpty()) {
+            return true;
+        }
+        if ("com.android.systemui".equals(packageName)) {
+            return true;
+        }
+        if (packageName.contains("keyguard")) {
+            return true;
+        }
+        return packageName.contains(".dreams.");
+    }
+
+    /** Foregrounds where we never draw the reading gate (Senay itself, system flows, transient UI). */
+    private boolean shouldSkipGateOverlay(String packageName) {
+        if (PACKAGE_SENAY.equals(packageName)) {
+            return true;
+        }
+        if (isTransientForegroundNavigation(packageName)) {
+            return true;
+        }
+        return packageName.startsWith("com.android.settings")
+                || packageName.startsWith("com.google.android.permissioncontroller")
+                || "com.android.packageinstaller".equals(packageName)
+                || "com.google.android.packageinstaller".equals(packageName);
+    }
+
+    private String packageFromRoot(AccessibilityNodeInfo root) {
+        if (root == null) {
+            return null;
+        }
         try {
-            root = getRootInActiveWindow();
-            if (root != null) {
-                CharSequence p = root.getPackageName();
-                if (p != null) {
-                    return p.toString();
-                }
-            }
+            CharSequence p = root.getPackageName();
+            return p != null ? p.toString() : null;
         } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private AccessibilityNodeInfo getRootInActiveWindowSafe() {
+        try {
+            return getRootInActiveWindow();
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    /**
+     * Merge accessibility root (immediate) with UsageStats (stable on Android 10+). If they disagree,
+     * prefer whichever corresponds to a locked app so we do not miss a gated package.
+     */
+    private String mergeRootAndUsageStats() {
+        AccessibilityNodeInfo root = getRootInActiveWindowSafe();
+        String fromRoot;
+        try {
+            fromRoot = packageFromRoot(root);
         } finally {
             if (root != null) {
                 try {
@@ -85,7 +166,120 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                 }
             }
         }
-        return null;
+
+        String fromStats = UsageStatsHelper.hasUsageAccess(this)
+                ? UsageStatsHelper.getMostRecentPackage(this, 60_000L)
+                : null;
+
+        if (fromRoot == null || fromRoot.isEmpty()) {
+            return fromStats;
+        }
+        if (fromStats == null || fromStats.isEmpty()) {
+            return fromRoot;
+        }
+        if (fromRoot.equals(fromStats)) {
+            return fromRoot;
+        }
+        boolean rootLocked = AppLockPrefs.isLockedPackage(this, fromRoot);
+        boolean statsLocked = AppLockPrefs.isLockedPackage(this, fromStats);
+        if (rootLocked != statsLocked) {
+            return rootLocked ? fromRoot : fromStats;
+        }
+        if (rootLocked) {
+            return fromRoot;
+        }
+        return fromRoot;
+    }
+
+    /**
+     * Split-screen / multi-window: if any application window shows a locked package, prefer it for gating
+     * even when focus is briefly on launcher or another pane.
+     */
+    private String pickForegroundFromWindows() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
+            return null;
+        }
+        List<AccessibilityWindowInfo> windows = getWindows();
+        if (windows == null || windows.isEmpty()) {
+            return null;
+        }
+        String focusedPkg = null;
+        List<String> visibleLockedPackages = new ArrayList<>();
+        String firstApplicationPkg = null;
+        Set<String> locked = AppLockPrefs.getLockedPackages(this);
+        try {
+            for (AccessibilityWindowInfo w : windows) {
+                if (w == null) {
+                    continue;
+                }
+                if (w.getType() == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) {
+                    continue;
+                }
+                Rect b = new Rect();
+                w.getBoundsInScreen(b);
+                if (b.width() < 16 || b.height() < 16) {
+                    continue;
+                }
+                AccessibilityNodeInfo nodeRoot = w.getRoot();
+                if (nodeRoot == null) {
+                    continue;
+                }
+                try {
+                    String pkg = packageFromRoot(nodeRoot);
+                    if (pkg == null || pkg.isEmpty()) {
+                        continue;
+                    }
+                    if (w.getType() == AccessibilityWindowInfo.TYPE_APPLICATION && firstApplicationPkg == null) {
+                        firstApplicationPkg = pkg;
+                    }
+                    if (w.isFocused()) {
+                        focusedPkg = pkg;
+                    }
+                    if (!locked.isEmpty() && locked.contains(pkg)
+                            && w.getType() == AccessibilityWindowInfo.TYPE_APPLICATION) {
+                        visibleLockedPackages.add(pkg);
+                    }
+                } finally {
+                    try {
+                        nodeRoot.recycle();
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        } finally {
+            for (AccessibilityWindowInfo w : windows) {
+                try {
+                    w.recycle();
+                } catch (Exception ignored) {
+                }
+            }
+        }
+        if (!visibleLockedPackages.isEmpty()) {
+            if (focusedPkg != null && visibleLockedPackages.contains(focusedPkg)) {
+                return focusedPkg;
+            }
+            return visibleLockedPackages.get(0);
+        }
+        return focusedPkg != null ? focusedPkg : firstApplicationPkg;
+    }
+
+    private String resolveForegroundPackage() {
+        String merged = mergeRootAndUsageStats();
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            String fromWindows = pickForegroundFromWindows();
+            if (fromWindows != null) {
+                if (AppLockPrefs.isLockedPackage(this, fromWindows)) {
+                    return fromWindows;
+                }
+                if (merged != null
+                        && AppLockPrefs.isLockedPackage(this, merged)
+                        && !merged.equals(fromWindows)) {
+                    return merged;
+                }
+                return fromWindows;
+            }
+        }
+        return merged;
     }
 
     private void evaluateForeground(String packageName) {
@@ -95,68 +289,67 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
             return;
         }
 
-        if (overlayView != null) {
-            return;
-        }
-
-        if (lastStableForeground != null && !lastStableForeground.equals(packageName)) {
-            if (AppLockPrefs.isLockedPackage(this, lastStableForeground)) {
-                AppLockPrefs.markUserLeftLockedApp(this, lastStableForeground);
+        synchronized (overlayLock) {
+            if (overlayViewRef.get() != null) {
+                return;
             }
         }
-        lastStableForeground = packageName;
 
-        if (shouldAlwaysAllow(packageName)) {
-            removeOverlay();
-            return;
-        }
+        synchronized (AppLockPrefs.GATE_STATE_LOCK) {
+            if (lastStableForeground != null && !lastStableForeground.equals(packageName)) {
+                if (AppLockPrefs.isLockedPackage(this, lastStableForeground)
+                        && !isTransientForegroundNavigation(packageName)) {
+                    AppLockPrefs.markUserLeftLockedApp(this, lastStableForeground);
+                }
+            }
+            lastStableForeground = packageName;
 
-        if (!AppLockPrefs.isLockedPackage(this, packageName)) {
-            removeOverlay();
-            return;
-        }
+            if (shouldSkipGateOverlay(packageName)) {
+                removeOverlay();
+                return;
+            }
 
-        if (AppLockPrefs.hasValidGatePass(this, packageName)) {
-            removeOverlay();
-            return;
+            if (!AppLockPrefs.isLockedPackage(this, packageName)) {
+                removeOverlay();
+                return;
+            }
+
+            if (AppLockPrefs.hasValidGatePass(this, packageName)) {
+                removeOverlay();
+                return;
+            }
         }
 
         showOverlay(packageName);
     }
 
-    private boolean shouldAlwaysAllow(String packageName) {
-        if (PACKAGE_SENAY.equals(packageName)) return true;
-        return packageName.startsWith("com.android.settings")
-                || packageName.startsWith("com.google.android.permissioncontroller")
-                || "com.android.packageinstaller".equals(packageName)
-                || "com.google.android.packageinstaller".equals(packageName)
-                || "com.android.systemui".equals(packageName);
-    }
-
     private void showOverlay(String blockedPackage) {
-        if (overlayView != null && blockedPackage.equals(overlayTargetPackage)) {
-            return;
-        }
-        if (overlayView != null) {
-            removeOverlay();
+        synchronized (overlayLock) {
+            View existing = overlayViewRef.get();
+            if (existing != null && blockedPackage.equals(overlayTargetPackage)) {
+                return;
+            }
+            if (existing != null) {
+                removeOverlayLocked();
+            }
         }
 
         LayoutInflater inflater = LayoutInflater.from(this);
-        overlayView = inflater.inflate(R.layout.app_lock_overlay, null);
+        View overlay = inflater.inflate(R.layout.app_lock_overlay, null);
         overlayTargetPackage = blockedPackage;
 
-        LinearLayout phasePrompt = overlayView.findViewById(R.id.app_lock_phase_prompt);
-        LinearLayout phaseReading = overlayView.findViewById(R.id.app_lock_phase_reading);
-        TextView promptTitle = overlayView.findViewById(R.id.app_lock_prompt_title);
-        Button btnStart = overlayView.findViewById(R.id.app_lock_btn_start_reading);
+        LinearLayout phasePrompt = overlay.findViewById(R.id.app_lock_phase_prompt);
+        LinearLayout phaseReading = overlay.findViewById(R.id.app_lock_phase_reading);
+        TextView promptTitle = overlay.findViewById(R.id.app_lock_prompt_title);
+        Button btnStart = overlay.findViewById(R.id.app_lock_btn_start_reading);
 
-        TextView headerTitle = overlayView.findViewById(R.id.app_lock_header_title);
-        TextView headerSub = overlayView.findViewById(R.id.app_lock_header_sub);
-        TextView body = overlayView.findViewById(R.id.app_lock_reading_body);
-        TextView hint = overlayView.findViewById(R.id.app_lock_scroll_hint);
-        ScrollView scroll = overlayView.findViewById(R.id.app_lock_scroll);
-        Button openApp = overlayView.findViewById(R.id.app_lock_open_app);
-        TextView nextLockFooter = overlayView.findViewById(R.id.app_lock_next_lock_footer);
+        TextView headerTitle = overlay.findViewById(R.id.app_lock_header_title);
+        TextView headerSub = overlay.findViewById(R.id.app_lock_header_sub);
+        TextView body = overlay.findViewById(R.id.app_lock_reading_body);
+        TextView hint = overlay.findViewById(R.id.app_lock_scroll_hint);
+        ScrollView scroll = overlay.findViewById(R.id.app_lock_scroll);
+        Button openApp = overlay.findViewById(R.id.app_lock_open_app);
+        TextView nextLockFooter = overlay.findViewById(R.id.app_lock_next_lock_footer);
 
         String appLabel;
         try {
@@ -186,7 +379,11 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
             GATE_IO.execute(() -> {
                 BibleGateNavigator.Segment seg = loadCurrentSegment();
                 mainHandler.post(() -> {
-                    if (overlayView == null || !blockedPackage.equals(overlayTargetPackage)) return;
+                    synchronized (overlayLock) {
+                        if (overlayViewRef.get() == null || !blockedPackage.equals(overlayTargetPackage)) {
+                            return;
+                        }
+                    }
 
                     if (seg == null || TextUtils.isEmpty(seg.html)) {
                         body.setText(R.string.app_lock_bible_missing);
@@ -225,7 +422,9 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                             int chap = BibleGateNavigator.getChapterNumberAt(
                                     ReadingGateAccessibilityService.this, b, c);
                             String mode = AppLockPrefs.getMode(ReadingGateAccessibilityService.this);
-                            if (mode == null) mode = "paragraph";
+                            if (mode == null) {
+                                mode = "paragraph";
+                            }
                             JSONObject row = new JSONObject();
                             row.put("bookId", bookId != null ? bookId : "");
                             row.put("chapter", chap);
@@ -236,7 +435,7 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                         if ("chapter".equals(AppLockPrefs.getMode(ReadingGateAccessibilityService.this))) {
                             GateBibleProgress.advanceChapterGate(ReadingGateAccessibilityService.this);
                         } else {
-                            int steps = seg != null && seg.versesInGate > 0
+                            int steps = seg.versesInGate > 0
                                     ? seg.versesInGate
                                     : BibleGateNavigator.PARAGRAPH_GATE_VERSE_COUNT;
                             GateBibleProgress.advanceParagraphGate(ReadingGateAccessibilityService.this, steps);
@@ -260,6 +459,22 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
 
         nextLockFooter.setText(R.string.app_lock_footer_next_lock);
 
+        WindowManager.LayoutParams params = buildAccessibilityOverlayParams();
+        synchronized (overlayLock) {
+            overlayViewRef.set(overlay);
+            try {
+                windowManager.addView(overlay, params);
+            } catch (Exception e) {
+                overlayViewRef.set(null);
+                overlayTargetPackage = null;
+                if (tryAddApplicationOverlayFallback(overlay, params)) {
+                    return;
+                }
+            }
+        }
+    }
+
+    private WindowManager.LayoutParams buildAccessibilityOverlayParams() {
         WindowManager.LayoutParams params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -268,17 +483,45 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                         | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
                         | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             params.layoutInDisplayCutoutMode =
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
         }
+        return params;
+    }
 
-        try {
-            windowManager.addView(overlayView, params);
-        } catch (Exception e) {
-            overlayView = null;
-            overlayTargetPackage = null;
+    /**
+     * When accessibility overlay is blocked, use {@link WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY}
+     * if the user granted "Display over other apps".
+     */
+    private boolean tryAddApplicationOverlayFallback(View overlay, WindowManager.LayoutParams ignored) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || !Settings.canDrawOverlays(this)) {
+            return false;
+        }
+        WindowManager.LayoutParams p2 = new WindowManager.LayoutParams(
+                WindowManager.LayoutParams.MATCH_PARENT,
+                WindowManager.LayoutParams.MATCH_PARENT,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                        : WindowManager.LayoutParams.TYPE_PHONE,
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                        | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+                PixelFormat.TRANSLUCENT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            p2.layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        }
+        synchronized (overlayLock) {
+            overlayViewRef.set(overlay);
+            try {
+                windowManager.addView(overlay, p2);
+                return true;
+            } catch (Exception e2) {
+                overlayViewRef.set(null);
+                overlayTargetPackage = null;
+                return false;
+            }
         }
     }
 
@@ -294,9 +537,17 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
     }
 
     private void updateOpenButtonState(ScrollView scroll, Button openApp, TextView hint) {
-        if (scroll == null || openApp == null || overlayView == null) return;
+        View current;
+        synchronized (overlayLock) {
+            current = overlayViewRef.get();
+        }
+        if (scroll == null || openApp == null || current == null) {
+            return;
+        }
         View child = scroll.getChildAt(0);
-        if (child == null) return;
+        if (child == null) {
+            return;
+        }
         int range = child.getHeight() - scroll.getHeight();
         boolean atBottom = range <= SCROLL_END_SLACK_PX
                 || scroll.getScrollY() >= range - SCROLL_END_SLACK_PX;
@@ -308,24 +559,34 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
     }
 
     private void removeOverlay() {
-        if (overlayView == null) return;
+        synchronized (overlayLock) {
+            removeOverlayLocked();
+        }
+    }
+
+    private void removeOverlayLocked() {
+        View v = overlayViewRef.getAndSet(null);
+        overlayTargetPackage = null;
+        if (v == null) {
+            return;
+        }
         try {
-            windowManager.removeView(overlayView);
+            windowManager.removeView(v);
         } catch (Exception ignored) {
         }
-        overlayView = null;
-        overlayTargetPackage = null;
     }
 
     @Override
     public void onInterrupt() {
         mainHandler.removeCallbacks(debouncedEvaluate);
+        mainHandler.removeCallbacks(followUpEvaluate);
         removeOverlay();
     }
 
     @Override
     public void onDestroy() {
         mainHandler.removeCallbacks(debouncedEvaluate);
+        mainHandler.removeCallbacks(followUpEvaluate);
         removeOverlay();
         super.onDestroy();
     }

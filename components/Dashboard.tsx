@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Icons } from '../constants';
+import { useAppLanguage } from '../contexts/AppLanguageContext';
 import Heatmap from './dashboard/Heatmap';
 import BookList from './dashboard/BookList';
 import LibraryDrawer from './LibraryDrawer';
@@ -41,6 +42,7 @@ const Dashboard: React.FC<Props> = ({
   getHeatmapData,
   daysPracticed
 }) => {
+  const { t } = useAppLanguage();
   const [saints, setSaints] = useState<Record<string, string>>({});
   const [fastingSeasons, setFastingSeasons] = useState<FastingSeason[]>([]);
   const [holidays, setHolidays] = useState<EthiopianHoliday[]>([]);
@@ -151,10 +153,10 @@ const Dashboard: React.FC<Props> = ({
                    onClick={toggleSaintHolidayDisplay}
                  >
                    <div className="text-[10px] text-[var(--text-muted)] uppercase tracking-tighter mb-0.5">
-                     {todayHoliday && showHolidayFirst ? 'Holiday' : 'Saint of the day'}
+                     {todayHoliday && showHolidayFirst ? t('dashboard.holiday') : t('dashboard.saintOfDay')}
                    </div>
                    <div className="text-xs font-bold text-[var(--text-primary)] ethiopic truncate max-w-[140px]">
-                     {todayHoliday && showHolidayFirst ? todayHoliday.name : (saintOfToday || 'Holy Saints')}
+                     {todayHoliday && showHolidayFirst ? todayHoliday.name : (saintOfToday || t('dashboard.holySaints'))}
                    </div>
                  </div>
                )}
@@ -164,7 +166,7 @@ const Dashboard: React.FC<Props> = ({
               onClick={() => onStart('wudase', true)}
               className="w-full bg-[var(--gold)] text-black py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-xs hover:bg-[#c0a030] transition-all shadow-xl active:scale-95 flex items-center justify-center space-x-3 group"
             >
-              <span>Daily Reading</span>
+              <span>{t('dashboard.dailyReading')}</span>
               <Icons.ChevronRight className="group-hover:translate-x-1 transition-transform" />
             </button>
           </section>
@@ -172,7 +174,7 @@ const Dashboard: React.FC<Props> = ({
           <section className="bg-[var(--card-bg)] border border-theme p-8 rounded-[2.5rem] space-y-6 shadow-md">
             <div className="flex justify-between items-center px-1">
               <div className="flex items-center space-x-2 text-[var(--gold)]">
-                <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">My Routine</h3>
+                <h3 className="uppercase text-[10px] font-bold tracking-[0.2em]">{t('dashboard.myRoutine')}</h3>
               </div>
               <div className="flex items-center space-x-3">
                 <button onClick={() => changeHeatmapMonth(-1)} className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)]"><Icons.ChevronRight className="rotate-180" /></button>
@@ -194,12 +196,12 @@ const Dashboard: React.FC<Props> = ({
                   {stats.streak || (daysPracticed > 0 ? 0 : '—')}
                 </span>
                 <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">
-                  {stats.streak === 0 && daysPracticed > 0 ? 'Foundation Set' : 'Day Streak'}
+                  {stats.streak === 0 && daysPracticed > 0 ? t('dashboard.foundationSet') : t('dashboard.dayStreak')}
                 </span>
               </div>
               <div className="text-right flex flex-col">
                 <span className="text-xl font-light text-[var(--text-primary)] leading-none">{daysPracticed}</span>
-                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">Insights</span>
+                <span className="text-[8px] uppercase tracking-widest text-[var(--text-muted)] font-black">{t('dashboard.insights')}</span>
               </div>
             </div>
           </section>

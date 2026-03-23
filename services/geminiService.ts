@@ -1,9 +1,18 @@
+import { GoogleGenAI } from '@google/genai';
+import { ChatMessage } from '../types';
 
-import { GoogleGenAI } from "@google/genai";
-import { ChatMessage } from "../types";
+/** Injected by Vite `define` (may be "" if GEMINI_API_KEY is not set). */
+const RESOLVED_API_KEY = String(process.env.API_KEY ?? '').trim();
 
-// Always use the process.env.API_KEY string directly when initializing the client instance
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+let aiSingleton: GoogleGenAI | null = null;
+
+function getAI(): GoogleGenAI | null {
+  if (!RESOLVED_API_KEY) return null;
+  if (!aiSingleton) {
+    aiSingleton = new GoogleGenAI({ apiKey: RESOLVED_API_KEY });
+  }
+  return aiSingleton;
+}
 
 const SYSTEM_INSTRUCTION = `
   You are a knowledgeable companion and helper specialized in the history, theology, and liturgical practices of the Ethiopian Orthodox Tewahedo Church. 
@@ -19,6 +28,10 @@ const SYSTEM_INSTRUCTION = `
 `;
 
 export const getSpiritualReflection = async (messages: ChatMessage[], verseContext: string) => {
+  const ai = getAI();
+  if (!ai) {
+    return "Guidance isn't available yet (no API key). You can still read and reflect in the app.";
+  }
   try {
     const contents = messages.map(m => {
       const parts: any[] = [{ text: m.content }];
@@ -54,6 +67,16 @@ export const getSpiritualReflection = async (messages: ChatMessage[], verseConte
 };
 
 export const getSpiritualReflectionStream = async (messages: ChatMessage[], verseContext: string) => {
+  const ai = getAI();
+  if (!ai) {
+    async function* noKeyStream(): AsyncGenerator<{ text?: string }> {
+      yield {
+        text: "Guidance needs a Gemini API key. Add GEMINI_API_KEY to your .env file, then run npm run build (or dev) again."
+      };
+    }
+    return noKeyStream();
+  }
+
   const contents = messages.map(m => {
     const parts: any[] = [{ text: m.content || "Reflect on this input." }];
     if (m.attachment?.type === 'audio' && m.attachment.data && m.attachment.mimeType) {

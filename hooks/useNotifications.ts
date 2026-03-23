@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { Notification, NotificationType, NotificationPriority, EthiopianHoliday, FastingSeason } from '../types';
+import { Notification, EthiopianHoliday, FastingSeason } from '../types';
 import { getEthiopianDate } from '../utils/ethiopianCalendar';
 import { showTrayNotification } from '../utils/nativeNotifications';
 
 const STORAGE_KEY = 'senay_notifications';
 const NOTIFIED_EVENTS_KEY = 'senay_notified_events';
+
+/** Payload for `notify`; `mirrorNative` defaults to mirroring high/normal to the OS tray on native. */
+export type NotifyPayload = Omit<Notification, 'id' | 'createdAt' | 'read'> & { mirrorNative?: boolean };
 
 export const useNotifications = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -13,6 +16,38 @@ export const useNotifications = () => {
   
   // Track events notified in the current session/day to prevent duplicates
   const notifiedEventsRef = useRef<Set<string>>(new Set());
+
+  const saveNotifications = useCallback((updated: Notification[]) => {
+    setNotifications(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  }, []);
+
+  const notify = useCallback((raw: NotifyPayload) => {
+    const { mirrorNative, ...rest } = raw;
+    const newNotification: Notification = {
+      ...rest,
+      id: Math.random().toString(36).substring(2, 9),
+      createdAt: Date.now(),
+      read: false
+    };
+
+    setNotifications(prev => {
+      const updated = [newNotification, ...prev].slice(0, 50);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    if (rest.priority === 'high' || rest.priority === 'normal') {
+      setActiveToast(newNotification);
+      setTimeout(() => setActiveToast(null), 5000);
+    }
+
+    const shouldMirror =
+      mirrorNative !== false && (rest.priority === 'high' || rest.priority === 'normal');
+    if (Capacitor.isNativePlatform() && shouldMirror) {
+      showTrayNotification(rest.title, rest.body).catch(() => {});
+    }
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -95,36 +130,7 @@ export const useNotifications = () => {
     };
 
     checkEvents();
-  }, []);
-
-  const saveNotifications = useCallback((updated: Notification[]) => {
-    setNotifications(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  }, []);
-
-  const notify = useCallback((n: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
-    const newNotification: Notification = {
-      ...n,
-      id: Math.random().toString(36).substring(2, 9),
-      createdAt: Date.now(),
-      read: false
-    };
-
-    setNotifications(prev => {
-      const updated = [newNotification, ...prev].slice(0, 50);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      return updated;
-    });
-
-    if (n.priority === 'high' || n.priority === 'normal') {
-      setActiveToast(newNotification);
-      setTimeout(() => setActiveToast(null), 5000);
-    }
-
-    if (Capacitor.isNativePlatform() && (n.priority === 'high' || n.priority === 'normal')) {
-      showTrayNotification(n.title, n.body).catch(() => {});
-    }
-  }, []);
+  }, [notify]);
 
   const markAsRead = useCallback((id: string) => {
     setNotifications(prev => {

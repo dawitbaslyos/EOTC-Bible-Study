@@ -28,11 +28,10 @@ export async function initCapacitor() {
       }
     });
 
-    App.addListener('backButton', ({ canGoBack }) => {
-      if (!canGoBack) {
-        App.exitApp();
-      } else {
-        window.history.back();
+    const { notifyAndroidBack } = await import('./androidBackHandler');
+    App.addListener('backButton', async () => {
+      if (!notifyAndroidBack()) {
+        await App.exitApp();
       }
     });
   } catch (error) {

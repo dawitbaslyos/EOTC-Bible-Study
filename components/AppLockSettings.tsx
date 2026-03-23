@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { Icons } from '../constants';
+import { useAppLanguage } from '../contexts/AppLanguageContext';
 import { AppLock, AppLockMode, AppLockState, LauncherAppRow } from '../src/plugins/app-lock';
 
 interface Props {
@@ -10,8 +11,8 @@ interface Props {
 const isAndroid = () => Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
 
 export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
+  const { t } = useAppLanguage();
   const [state, setState] = useState<AppLockState | null>(null);
-  /** Display name per package id (from Android PackageManager). */
   const [packageLabels, setPackageLabels] = useState<Record<string, string>>({});
   const [apps, setApps] = useState<LauncherAppRow[]>([]);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -23,7 +24,12 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
     try {
       const s = await AppLock.getState();
       const pkgs = Array.isArray(s.packages) ? s.packages : [];
-      setState({ ...s, packages: pkgs });
+      setState({
+        ...s,
+        packages: pkgs,
+        usageStatsPermissionGranted: s.usageStatsPermissionGranted ?? false,
+        displayOverOtherAppsGranted: s.displayOverOtherAppsGranted ?? true
+      });
 
       if (pkgs.length > 0) {
         const { labels } = await AppLock.getLabelsForPackages({ packages: pkgs });
@@ -118,149 +124,168 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
     );
   }, [apps, query]);
 
+  const modeHint = useMemo(
+    () => (state?.mode === 'chapter' ? t('appLock.modeChapterDesc') : t('appLock.modeParagraphDesc')),
+    [state?.mode, t]
+  );
+
   if (!isAndroid()) {
     return null;
   }
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center space-x-3 text-[var(--gold)]">
-        <Icons.Feather className="w-5 h-5" />
-        <h3 className="uppercase text-xs font-black tracking-[0.2em]">Focus lock (Android)</h3>
+    <section className="space-y-5">
+      <div className="flex items-center gap-3 text-[var(--gold)]">
+        <Icons.Feather className="w-5 h-5 shrink-0" />
+        <div className="min-w-0">
+          <h3 className="uppercase text-xs font-black tracking-[0.2em]">{t('appLock.title')}</h3>
+          <p className="text-[10px] text-[var(--text-secondary)] leading-snug mt-1">{t('appLock.intro')}</p>
+        </div>
       </div>
 
-      <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
-        When you open a locked app, Senay shows a short Scripture reading first (from the Bible built into the app).
-        Your place advances each time you finish. When you return to Senay, that reading counts toward your{' '}
-        <strong className="text-[var(--text-primary)]">streak and heatmap</strong>
-        {` `}(in chapter mode, your library progress updates too). Choose <strong>five short readings</strong> per lock or a{' '}
-        <strong>full chapter</strong> below.
-      </p>
-
-      {state === null && (
-        <p className="text-xs text-[var(--text-muted)]">Loading focus lock…</p>
-      )}
+      {state === null && <p className="text-xs text-[var(--text-muted)]">{t('appLock.loading')}</p>}
 
       {state && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <button
             type="button"
             disabled={busy}
             onClick={() => void toggleEnabled(!state.enabled)}
-            className={`w-full p-6 rounded-3xl border-2 flex items-center justify-between transition-all text-left text-[var(--text-primary)] ${
+            className={`w-full p-5 rounded-2xl border flex items-center justify-between gap-4 transition-all text-left text-[var(--text-primary)] ${
               state.enabled
-                ? 'bg-[var(--gold-muted)] border-[var(--gold)] shadow-md'
-                : 'bg-[var(--card-bg)] border-theme opacity-80'
+                ? 'bg-[var(--gold-muted)]/80 border-[var(--gold)]'
+                : 'bg-[var(--card-bg)] border-theme'
             }`}
           >
-            <div className="text-left min-w-0 pr-2">
-              <div className="text-sm font-bold text-[var(--text-primary)]">Enable focus lock</div>
-              <div className="text-[9px] text-[var(--text-secondary)] uppercase tracking-tighter mt-0.5">
-                Block selected apps until you read
-              </div>
+            <div className="min-w-0">
+              <div className="text-sm font-bold">{t('appLock.enable')}</div>
+              <div className="text-[10px] text-[var(--text-secondary)] mt-0.5">{t('appLock.enableDesc')}</div>
             </div>
             <div
-              className={`w-12 h-7 rounded-full relative transition-colors ${
+              className={`w-11 h-6 rounded-full shrink-0 relative transition-colors ${
                 state.enabled ? 'bg-[var(--gold)]' : 'bg-[var(--card-bg)] border border-theme'
               }`}
             >
               <div
-                className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                  state.enabled ? 'translate-x-6' : 'translate-x-1'
+                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                  state.enabled ? 'translate-x-5' : 'translate-x-0.5'
                 }`}
               />
             </div>
           </button>
 
-          <div className="space-y-2">
-            <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">
-              Gate step size
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
+              {t('appLock.gateStep')}
+            </p>
+            <div className="flex rounded-xl border border-theme p-1 gap-1 bg-[var(--card-bg)]">
+              {(['paragraph', 'chapter'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void setMode(m)}
+                  className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                    state.mode === m
+                      ? 'bg-[var(--gold-muted)] text-[var(--text-primary)] shadow-sm'
+                      : 'text-[var(--text-muted)]'
+                  }`}
+                >
+                  {m === 'paragraph' ? t('appLock.modeParagraph') : t('appLock.modeChapter')}
+                </button>
+              ))}
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <p className="text-[10px] text-[var(--text-secondary)] mt-2 leading-relaxed">{modeHint}</p>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
+              {t('appLock.setupTitle')}
+            </p>
+            <div className="rounded-xl border border-theme overflow-hidden divide-y divide-theme">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void setMode('paragraph')}
-                className={`p-4 rounded-2xl border-2 text-left transition-all text-[var(--text-primary)] ${
-                  state.mode === 'paragraph'
-                    ? 'border-[var(--gold)] bg-[var(--gold-muted)]'
-                    : 'border-theme bg-[var(--card-bg)]'
-                }`}
+                onClick={() => void AppLock.openAccessibilitySettings()}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
               >
-                <div className="text-xs font-bold text-[var(--text-primary)]">5 paragraphs</div>
-                <div className="text-[8px] text-[var(--text-secondary)] mt-1 leading-snug">
-                  Five verses in order from the Bible file (one gate)
-                </div>
+                <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
+                  {t('appLock.rowAccessibility')}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase shrink-0 ${
+                    state.accessibilityServiceEnabled ? 'text-emerald-500' : 'text-amber-500'
+                  }`}
+                >
+                  {state.accessibilityServiceEnabled ? t('appLock.badgeOn') : t('appLock.badgeOff')}
+                </span>
+                <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </button>
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => void setMode('chapter')}
-                className={`p-4 rounded-2xl border-2 text-left transition-all text-[var(--text-primary)] ${
-                  state.mode === 'chapter'
-                    ? 'border-[var(--gold)] bg-[var(--gold-muted)]'
-                    : 'border-theme bg-[var(--card-bg)]'
-                }`}
+                onClick={() => void AppLock.openUsageAccessSettings().then(() => load())}
+                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
               >
-                <div className="text-xs font-bold text-[var(--text-primary)]">1 chapter</div>
-                <div className="text-[8px] text-[var(--text-secondary)] mt-1 leading-snug">
-                  Whole chapter each time; next lock starts the next chapter
-                </div>
+                <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
+                  {t('appLock.rowUsage')}
+                </span>
+                <span
+                  className={`text-[10px] font-bold uppercase shrink-0 ${
+                    state.usageStatsPermissionGranted ? 'text-emerald-500' : 'text-amber-500'
+                  }`}
+                >
+                  {state.usageStatsPermissionGranted ? t('appLock.badgeOn') : t('appLock.badgeOff')}
+                </span>
+                <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </button>
+              {!state.displayOverOtherAppsGranted && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void AppLock.openDisplayOverOtherAppsSettings().then(() => load())}
+                  className="w-full flex items-center gap-3 px-4 py-3.5 text-left bg-amber-500/5 hover:bg-amber-500/10 transition-colors"
+                >
+                  <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
+                    {t('appLock.displayOverApps')}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase text-amber-500 shrink-0">
+                    {t('appLock.badgeOff')}
+                  </span>
+                  <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                </button>
+              )}
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2 items-center">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void AppLock.openAccessibilitySettings()}
-              className="px-4 py-3 rounded-2xl bg-[var(--card-bg)] border border-theme text-[10px] font-black uppercase tracking-widest text-[var(--text-primary)] ring-1 ring-[var(--gold)]/35"
-            >
-              Accessibility settings
-            </button>
-            <span
-              className={`text-[9px] font-bold uppercase ${
-                state.accessibilityServiceEnabled ? 'text-emerald-500' : 'text-amber-500'
-              }`}
-            >
-              {state.accessibilityServiceEnabled ? 'Service on' : 'Service off — enable Senay'}
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="text-[9px] uppercase tracking-widest text-[var(--text-secondary)] font-semibold">
-                Locked apps
-              </div>
+          <div>
+            <div className="flex items-center justify-between gap-3 mb-2">
+              <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold">
+                {t('appLock.lockedApps')}
+              </p>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => void openPicker()}
-                className="text-[10px] font-black uppercase tracking-widest text-[var(--gold)]"
+                className="text-[10px] font-bold uppercase tracking-wider text-[var(--gold)]"
               >
-                + Add app
+                {t('appLock.addApp')}
               </button>
             </div>
             {state.packages.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)]">No apps selected.</p>
+              <p className="text-xs text-[var(--text-muted)] py-2">{t('appLock.noApps')}</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="rounded-xl border border-theme divide-y divide-theme overflow-hidden">
                 {state.packages.map((pkg) => (
-                  <li
-                    key={pkg}
-                    className="flex items-center justify-between p-4 rounded-2xl bg-[var(--card-bg)] border border-theme gap-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="text-sm font-bold text-[var(--text-primary)] truncate">
-                        {packageLabels[pkg] ?? pkg}
-                      </div>
+                  <li key={pkg} className="flex items-center gap-3 px-4 py-3 bg-[var(--card-bg)]/50">
+                    <div className="min-w-0 flex-1 text-sm font-medium text-[var(--text-primary)] truncate">
+                      {packageLabels[pkg] ?? pkg}
                     </div>
                     <button
                       type="button"
                       disabled={busy}
                       onClick={() => removePackage(pkg)}
-                      className="p-2 text-red-400 hover:text-red-300 shrink-0"
+                      className="p-1.5 text-[var(--text-muted)] hover:text-red-400 shrink-0 rounded-lg"
                       aria-label={`Remove ${packageLabels[pkg] ?? pkg}`}
                     >
                       <Icons.Close className="w-4 h-4" />
@@ -276,33 +301,33 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       {pickerOpen && (
         <div className="fixed inset-0 z-[220] flex items-end sm:items-center justify-center p-4 animate-in fade-in">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setPickerOpen(false)} />
-          <div className="relative w-full max-w-lg max-h-[80vh] bg-[var(--bg-primary)] border border-theme rounded-3xl flex flex-col shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-theme flex items-center justify-between gap-2">
-              <h4 className="text-sm font-bold text-[var(--gold)]">Choose an app</h4>
+          <div className="relative w-full max-w-lg max-h-[80vh] bg-[var(--bg-primary)] border border-theme rounded-2xl flex flex-col shadow-2xl overflow-hidden">
+            <div className="px-4 py-3 border-b border-theme flex items-center justify-between gap-2">
+              <h4 className="text-sm font-bold text-[var(--gold)]">{t('appLock.chooseApp')}</h4>
               <button type="button" onClick={() => setPickerOpen(false)} className="p-2 text-[var(--text-muted)]">
                 <Icons.Close className="w-5 h-5" />
               </button>
             </div>
             <div className="p-3 border-b border-theme">
-              <div className="flex items-center gap-2 bg-[var(--card-bg)] rounded-xl px-3 py-2 border border-theme">
+              <div className="flex items-center gap-2 bg-[var(--card-bg)] rounded-lg px-3 py-2 border border-theme">
                 <Icons.Search className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
                 <input
                   className="flex-1 bg-transparent text-sm outline-none text-[var(--text-primary)] placeholder:text-[var(--text-muted)]"
-                  placeholder="Search by name or package"
+                  placeholder={t('appLock.searchPlaceholder')}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </div>
             </div>
-            <div className="overflow-y-auto custom-scrollbar flex-1 p-2">
+            <div className="overflow-y-auto custom-scrollbar flex-1 p-1">
               {filteredApps.slice(0, 400).map((a) => (
                 <button
                   key={a.packageName}
                   type="button"
                   onClick={() => addPackage(a.packageName)}
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-[var(--card-bg)] border border-transparent hover:border-theme transition-all text-[var(--text-primary)]"
+                  className="w-full text-left px-3 py-2.5 rounded-lg hover:bg-[var(--card-bg)] text-[var(--text-primary)]"
                 >
-                  <div className="text-sm font-bold truncate text-[var(--text-primary)]">{a.label}</div>
+                  <div className="text-sm font-semibold truncate">{a.label}</div>
                   <div className="text-[10px] font-mono text-[var(--text-muted)] truncate">{a.packageName}</div>
                 </button>
               ))}

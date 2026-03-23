@@ -1,7 +1,8 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Icons } from '../constants';
+import { useAppLanguage } from '../contexts/AppLanguageContext';
 import { Book, Testament, UserStats, BookProgress } from '../types';
 
 interface Props {
@@ -20,6 +21,16 @@ const LibraryDrawer: React.FC<Props> = ({
   isOpen, onClose, books, onSelectBook, userProfile, userStats, onLogout, daysPracticed,
   onOpenSettings
 }) => {
+  const { t } = useAppLanguage();
+  const tabLabels = useMemo(
+    () =>
+      ({
+        All: t('library.tabAll'),
+        Old: t('library.tabOld'),
+        New: t('library.tabNew')
+      }) as Record<Testament, string>,
+    [t]
+  );
   const [activeTab, setActiveTab] = useState<Testament>('All');
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -92,7 +103,7 @@ const LibraryDrawer: React.FC<Props> = ({
                </div>
                
                <div className="flex-1">
-                  <h3 className="serif text-xl text-[var(--text-primary)] truncate">{userProfile?.name || 'Seer'}</h3>
+                  <h3 className="serif text-xl text-[var(--text-primary)] truncate">{userProfile?.name || t('library.seer')}</h3>
                </div>
 
                <button 
@@ -106,22 +117,22 @@ const LibraryDrawer: React.FC<Props> = ({
             <div className="flex items-center justify-between px-2">
                <div className="text-center">
                   <div className="text-sm font-bold text-[var(--text-primary)]">{activeScrolls}</div>
-                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Scrolls</div>
+                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{t('library.scrolls')}</div>
                </div>
                <div className="text-center">
                   <div className="text-sm font-bold text-[var(--text-primary)]">{totalReflections}</div>
-                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Insight</div>
+                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{t('library.insight')}</div>
                </div>
                <div className="text-center">
                   <div className="text-sm font-bold text-[var(--text-primary)]">{daysPracticed || 0}</div>
-                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Days</div>
+                  <div className="text-[7px] uppercase tracking-widest text-[var(--text-muted)] font-bold">{t('library.days')}</div>
                </div>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
             <header className="p-6 pb-2">
-              <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">Holy Canon</h2>
+              <h2 className="text-[10px] uppercase tracking-[0.3em] font-black text-[var(--text-muted)]">{t('library.holyCanon')}</h2>
             </header>
 
             <div className="flex px-6 gap-2 pt-2">
@@ -133,7 +144,7 @@ const LibraryDrawer: React.FC<Props> = ({
                     activeTab === tab ? 'bg-[var(--gold)] text-black shadow-md' : 'bg-[var(--card-bg)] border border-theme text-[var(--text-muted)] hover:bg-[var(--gold-muted)]'
                   }`}
                 >
-                  {tab}
+                  {tabLabels[tab]}
                 </button>
               ))}
             </div>

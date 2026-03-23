@@ -7,7 +7,11 @@ import {
   isAndroidNative,
   type SenayPermissionStatus
 } from '../utils/appPermissions';
-import { syncRitualRemindersFromStats, rescheduleOpenAppReminder } from '../utils/nativeNotifications';
+import {
+  syncRitualRemindersFromStats,
+  rescheduleOpenAppReminder,
+  syncStreakReminderFromStats
+} from '../utils/nativeNotifications';
 import type { UserStats } from '../types';
 
 export const ANDROID_PERMISSIONS_DONE_KEY = 'senay_android_permissions_flow_done';
@@ -31,6 +35,7 @@ const PermissionSetupModal: React.FC<Props> = ({ stats, onFinished, isManualEntr
 
   const refreshNotifications = () => {
     syncRitualRemindersFromStats(stats).catch(() => {});
+    syncStreakReminderFromStats(stats).catch(() => {});
     rescheduleOpenAppReminder(3).catch(() => {});
   };
 

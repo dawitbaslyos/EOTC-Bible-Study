@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "generate-icons": "node scripts/generate-icons.js"
+    "generate-icons": "node scripts/generate-icons.js",
+    "import-wudase-geez": "node scripts/import-wudase-geez-from-docx.mjs",
+    "emit-anqase-berhan": "node scripts/emit-anqase-berhan.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
@@ -27,6 +29,7 @@
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.19",
+    "mammoth": "^1.12.0",
     "postcss": "^8.4.38",
     "sharp": "^0.34.5",
     "tailwindcss": "^3.4.13",
