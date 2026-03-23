@@ -30,8 +30,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Two-step gate: (1) prompt + "Unlock app" (2) Bible passage from assets, scroll, then open locked app.
- * Detection: multi-window scan + merged UsageStats/accessibility root; overlay: accessibility overlay with
+ * Two-step gate: (1) prompt + start reading (2) Bible passage from assets, scroll, then Finish.
+ * Foreground: accessibility windows + active window root (no usage-stats permission).
+ * Overlay: {@link WindowManager.LayoutParams#TYPE_ACCESSIBILITY_OVERLAY} with
  * {@link WindowManager.LayoutParams#TYPE_APPLICATION_OVERLAY} fallback when allowed.
  */
 public class ReadingGateAccessibilityService extends AccessibilityService {
@@ -39,7 +40,7 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
     public static final String PACKAGE_SENAY = "com.senay.app";
 
     private static final long EVALUATE_DEBOUNCE_MS = 75L;
-    /** Second pass catches rapid app switches before usage stats / focus settle. */
+    /** Second pass catches rapid app switches before focus settles. */
     private static final long FOLLOW_UP_EVALUATE_MS = 170L;
     private static final int SCROLL_END_SLACK_PX = 48;
 
@@ -52,7 +53,6 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
     private WindowManager windowManager;
     private final AtomicReference<View> overlayViewRef = new AtomicReference<>();
     private volatile String overlayTargetPackage;
-    private String lastStableForeground;
 
     @Override
     public void onCreate() {
@@ -149,15 +149,11 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
         }
     }
 
-    /**
-     * Merge accessibility root (immediate) with UsageStats (stable on Android 10+). If they disagree,
-     * prefer whichever corresponds to a locked app so we do not miss a gated package.
-     */
-    private String mergeRootAndUsageStats() {
+    /** Package reported by the active accessibility root (recycled safely). */
+    private String foregroundFromActiveRoot() {
         AccessibilityNodeInfo root = getRootInActiveWindowSafe();
-        String fromRoot;
         try {
-            fromRoot = packageFromRoot(root);
+            return packageFromRoot(root);
         } finally {
             if (root != null) {
                 try {
@@ -166,29 +162,6 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
                 }
             }
         }
-
-        String fromStats = UsageStatsHelper.hasUsageAccess(this)
-                ? UsageStatsHelper.getMostRecentPackage(this, 60_000L)
-                : null;
-
-        if (fromRoot == null || fromRoot.isEmpty()) {
-            return fromStats;
-        }
-        if (fromStats == null || fromStats.isEmpty()) {
-            return fromRoot;
-        }
-        if (fromRoot.equals(fromStats)) {
-            return fromRoot;
-        }
-        boolean rootLocked = AppLockPrefs.isLockedPackage(this, fromRoot);
-        boolean statsLocked = AppLockPrefs.isLockedPackage(this, fromStats);
-        if (rootLocked != statsLocked) {
-            return rootLocked ? fromRoot : fromStats;
-        }
-        if (rootLocked) {
-            return fromRoot;
-        }
-        return fromRoot;
     }
 
     /**
@@ -264,28 +237,27 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
     }
 
     private String resolveForegroundPackage() {
-        String merged = mergeRootAndUsageStats();
+        String fromRoot = foregroundFromActiveRoot();
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             String fromWindows = pickForegroundFromWindows();
             if (fromWindows != null) {
                 if (AppLockPrefs.isLockedPackage(this, fromWindows)) {
                     return fromWindows;
                 }
-                if (merged != null
-                        && AppLockPrefs.isLockedPackage(this, merged)
-                        && !merged.equals(fromWindows)) {
-                    return merged;
+                if (fromRoot != null
+                        && AppLockPrefs.isLockedPackage(this, fromRoot)
+                        && !fromRoot.equals(fromWindows)) {
+                    return fromRoot;
                 }
                 return fromWindows;
             }
         }
-        return merged;
+        return fromRoot;
     }
 
     private void evaluateForeground(String packageName) {
         if (!AppLockPrefs.isEnabled(this)) {
             removeOverlay();
-            lastStableForeground = packageName;
             return;
         }
 
@@ -296,14 +268,6 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
         }
 
         synchronized (AppLockPrefs.GATE_STATE_LOCK) {
-            if (lastStableForeground != null && !lastStableForeground.equals(packageName)) {
-                if (AppLockPrefs.isLockedPackage(this, lastStableForeground)
-                        && !isTransientForegroundNavigation(packageName)) {
-                    AppLockPrefs.markUserLeftLockedApp(this, lastStableForeground);
-                }
-            }
-            lastStableForeground = packageName;
-
             if (shouldSkipGateOverlay(packageName)) {
                 removeOverlay();
                 return;

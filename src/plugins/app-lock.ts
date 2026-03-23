@@ -9,8 +9,6 @@ export interface AppLockState {
   packages: string[];
   hasGateReadingContent: boolean;
   accessibilityServiceEnabled: boolean;
-  /** UsageStatsManager — user grants in Special app access → Usage access. */
-  usageStatsPermissionGranted: boolean;
   /** Settings.canDrawOverlays — relevant on API 23+ if the system requires it for overlays. */
   displayOverOtherAppsGranted: boolean;
 }
@@ -37,7 +35,6 @@ export interface AppLockPlugin {
   setMode(options: { mode: AppLockMode }): Promise<void>;
   setLockedPackages(options: { packages: string[] }): Promise<void>;
   openAccessibilitySettings(): Promise<void>;
-  openUsageAccessSettings(): Promise<void>;
   openDisplayOverOtherAppsSettings(): Promise<void>;
   getLauncherApps(): Promise<{ apps: LauncherAppRow[] }>;
   /** Resolve display names for package ids (Android). */
@@ -55,14 +52,12 @@ export const AppLock = registerPlugin<AppLockPlugin>('AppLock', {
         packages: [],
         hasGateReadingContent: false,
         accessibilityServiceEnabled: false,
-        usageStatsPermissionGranted: false,
         displayOverOtherAppsGranted: true
       }),
       setEnabled: async () => {},
       setMode: async () => {},
       setLockedPackages: async () => {},
       openAccessibilitySettings: async () => {},
-      openUsageAccessSettings: async () => {},
       openDisplayOverOtherAppsSettings: async () => {},
       getLauncherApps: async () => ({ apps: [] }),
       getLabelsForPackages: async ({ packages }) => ({

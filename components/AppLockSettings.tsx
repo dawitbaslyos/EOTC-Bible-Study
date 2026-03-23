@@ -27,7 +27,6 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
       setState({
         ...s,
         packages: pkgs,
-        usageStatsPermissionGranted: s.usageStatsPermissionGranted ?? false,
         displayOverOtherAppsGranted: s.displayOverOtherAppsGranted ?? true
       });
 
@@ -218,24 +217,6 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
                   }`}
                 >
                   {state.accessibilityServiceEnabled ? t('appLock.badgeOn') : t('appLock.badgeOff')}
-                </span>
-                <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-              </button>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void AppLock.openUsageAccessSettings().then(() => load())}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
-              >
-                <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
-                  {t('appLock.rowUsage')}
-                </span>
-                <span
-                  className={`text-[10px] font-bold uppercase shrink-0 ${
-                    state.usageStatsPermissionGranted ? 'text-emerald-500' : 'text-amber-500'
-                  }`}
-                >
-                  {state.usageStatsPermissionGranted ? t('appLock.badgeOn') : t('appLock.badgeOff')}
                 </span>
                 <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
               </button>

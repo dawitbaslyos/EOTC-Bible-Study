@@ -3,6 +3,11 @@ import React, { useState } from 'react';
 import { WEEK_DAYS } from '../../constants';
 
 interface HeatmapItem {
+  /** Ethiopian calendar day (1–30, or Pagumē 1–6) for this cell */
+  ethiopianDay: number;
+  /** Ethiopian month index 1–13 */
+  ethiopianMonth?: number;
+  ethiopianMonthName?: string;
   count: number;
   isToday: boolean;
   isPadding?: boolean;
@@ -17,7 +22,14 @@ interface Props {
 }
 
 const Heatmap: React.FC<Props> = ({ data }) => {
-  const [tooltip, setTooltip] = useState<{index: number, count: number, fastingName: string | null, holidayName: string | null} | null>(null);
+  const [tooltip, setTooltip] = useState<{
+    index: number;
+    count: number;
+    fastingName: string | null;
+    holidayName: string | null;
+    ethiopianMonthName?: string;
+    ethiopianDay?: number;
+  } | null>(null);
 
   // 5-level intensity shading scale
   const getIntensityStyles = (count: number) => {
@@ -42,6 +54,11 @@ const Heatmap: React.FC<Props> = ({ data }) => {
               <span className="text-[8px] opacity-40 uppercase tracking-widest">Major Holiday</span>
             </div>
           )}
+          {tooltip.ethiopianMonthName != null && tooltip.ethiopianDay != null && (
+            <span className="text-[9px] text-[var(--text-muted)] font-semibold mb-1">
+              {tooltip.ethiopianMonthName} {tooltip.ethiopianDay}
+            </span>
+          )}
           {tooltip.fastingName && (
             <div className="flex items-center space-x-2 mb-1">
               <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: data[tooltip.index].fastingColor || 'transparent' }} />
@@ -63,43 +80,59 @@ const Heatmap: React.FC<Props> = ({ data }) => {
           const val = item.count;
           const isFasting = !!item.fastingColor;
           
-          let baseClass = `aspect-square rounded-[6px] transition-all relative cursor-help flex items-center justify-center text-[8px] overflow-hidden border `;
-          
+          let baseClass = `aspect-square rounded-[6px] transition-all relative cursor-help flex items-center justify-center overflow-hidden border `;
+
           if (val === 0) {
-            baseClass += " border-theme ";
+            baseClass += ' border-theme ';
           } else {
             baseClass += getIntensityStyles(val);
           }
 
-          if (item.isToday) baseClass += " ring-2 ring-[var(--gold)] ring-offset-2 ring-offset-[var(--bg-primary)] z-10 scale-105";
+          if (item.isToday) baseClass += ' ring-2 ring-[var(--gold)] ring-offset-2 ring-offset-[var(--bg-primary)] z-10 scale-105';
+
+          const dayNum = item.ethiopianDay ?? i + 1;
+          const dayLabelClass = item.isPadding
+            ? 'text-[9px] font-bold text-[var(--text-muted)] opacity-55'
+            : val === 0
+              ? 'text-[10px] font-black text-[var(--text-muted)]'
+              : val <= 2
+                ? 'text-[10px] font-black text-black/55'
+                : 'text-[10px] font-black text-black/80';
 
           return (
-            <div 
-              key={i} 
-              onMouseEnter={() => setTooltip({ index: i, count: val, fastingName: item.fastingName || null, holidayName: item.holidayName || null })}
+            <div
+              key={i}
+              onMouseEnter={() =>
+                setTooltip({
+                  index: i,
+                  count: val,
+                  fastingName: item.fastingName || null,
+                  holidayName: item.holidayName || null,
+                  ethiopianMonthName: item.ethiopianMonthName,
+                  ethiopianDay: item.ethiopianDay
+                })
+              }
               onMouseLeave={() => setTooltip(null)}
               className={`${baseClass} ${item.isPadding ? 'opacity-10 grayscale-[50%]' : 'opacity-100'} hover:scale-110 active:scale-95`}
-              style={{ 
-                backgroundColor: (val === 0 && isFasting) ? `${item.fastingColor}15` : undefined,
-                borderColor: (val === 0 && isFasting) ? `${item.fastingColor}40` : undefined
+              style={{
+                backgroundColor: val === 0 && isFasting ? `${item.fastingColor}15` : undefined,
+                borderColor: val === 0 && isFasting ? `${item.fastingColor}40` : undefined
               }}
             >
               {/* Fasting Indicator Line */}
               {isFasting && val === 0 && (
-                <div 
-                  className="absolute bottom-0 left-0 w-full h-0.5" 
-                  style={{ backgroundColor: item.fastingColor || 'transparent' }} 
+                <div
+                  className="absolute bottom-0 left-0 w-full h-0.5"
+                  style={{ backgroundColor: item.fastingColor || 'transparent' }}
                 />
               )}
 
               {/* Major Holiday Marker - Adaptive Theme Colors */}
               {item.isMajorHoliday && (
-                <div 
-                  className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full opacity-80 bg-[var(--gold)] shadow-[0_0_4px_var(--gold)]" 
-                />
+                <div className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full opacity-80 bg-[var(--gold)] shadow-[0_0_4px_var(--gold)]" />
               )}
 
-              {val > 2 && <span className="pointer-events-none select-none text-black/50 font-black">{val}</span>}
+              <span className={`pointer-events-none select-none tabular-nums leading-none ${dayLabelClass}`}>{dayNum}</span>
             </div>
           );
         })}

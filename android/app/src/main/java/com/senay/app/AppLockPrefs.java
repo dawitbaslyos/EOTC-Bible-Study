@@ -16,7 +16,7 @@ import java.util.Set;
  */
 public final class AppLockPrefs {
 
-    /** Guards pass / "left" reads and writes across the service and UI threads. */
+    /** Guards gate-pass timestamp reads/writes across the service and UI threads. */
     static final Object GATE_STATE_LOCK = new Object();
 
     private static final String PREFS = "senay_app_lock";
@@ -24,11 +24,10 @@ public final class AppLockPrefs {
     private static final String KEY_MODE = "mode"; // legacy, unused by overlay gate
     private static final String KEY_PACKAGES = "locked_packages";
 
-    /** Pass expires 1 hour after completing the on-overlay reading. */
-    public static final long GATE_PASS_VALID_MS = 60L * 60L * 1000L;
+    /** Pass is valid for this long after the user taps Finish on the overlay (per locked package). */
+    public static final long GATE_PASS_VALID_MS = 2L * 60L * 60L * 1000L;
 
     private static final String KEY_UNLOCK_PREFIX = "gate_unlock_ms_";
-    private static final String KEY_LEFT_PREFIX = "gate_left_";
     /** JSON array of { bookId, chapter, mode } queued for JS to merge into reading stats. */
     private static final String KEY_PENDING_GATE_QUEUE = "pending_gate_queue";
 
@@ -77,20 +76,6 @@ public final class AppLockPrefs {
         return getLockedPackages(ctx).contains(packageName);
     }
 
-    public static boolean isUserLeftSinceUnlock(Context ctx, String packageName) {
-        synchronized (GATE_STATE_LOCK) {
-            return p(ctx).getBoolean(KEY_LEFT_PREFIX + safePkg(packageName), false);
-        }
-    }
-
-    public static void markUserLeftLockedApp(Context ctx, String packageName) {
-        if (packageName == null) return;
-        if (!isLockedPackage(ctx, packageName)) return;
-        synchronized (GATE_STATE_LOCK) {
-            p(ctx).edit().putBoolean(KEY_LEFT_PREFIX + safePkg(packageName), true).apply();
-        }
-    }
-
     public static long getLastGateUnlockTime(Context ctx, String packageName) {
         synchronized (GATE_STATE_LOCK) {
             return p(ctx).getLong(KEY_UNLOCK_PREFIX + safePkg(packageName), 0L);
@@ -98,16 +83,14 @@ public final class AppLockPrefs {
     }
 
     /**
-     * User finished reading on the overlay and may use this app until they leave it or 1h passes.
+     * User finished reading on the overlay; same package can be opened without the gate again until
+     * {@link #GATE_PASS_VALID_MS} has elapsed ({@link System#currentTimeMillis()}).
      */
     public static void recordGateCompletion(Context ctx, String packageName) {
         if (packageName == null) return;
         String k = safePkg(packageName);
         synchronized (GATE_STATE_LOCK) {
-            p(ctx).edit()
-                    .putLong(KEY_UNLOCK_PREFIX + k, System.currentTimeMillis())
-                    .putBoolean(KEY_LEFT_PREFIX + k, false)
-                    .apply();
+            p(ctx).edit().putLong(KEY_UNLOCK_PREFIX + k, System.currentTimeMillis()).apply();
         }
     }
 
@@ -116,7 +99,6 @@ public final class AppLockPrefs {
             if (!isLockedPackage(ctx, packageName)) return true;
             long t = p(ctx).getLong(KEY_UNLOCK_PREFIX + safePkg(packageName), 0L);
             if (t <= 0L) return false;
-            if (p(ctx).getBoolean(KEY_LEFT_PREFIX + safePkg(packageName), false)) return false;
             long age = System.currentTimeMillis() - t;
             return age < GATE_PASS_VALID_MS;
         }

@@ -41,7 +41,6 @@ public class AppLockPlugin extends Plugin {
         ret.put("packages", jsonFromSet(AppLockPrefs.getLockedPackages(ctx)));
         ret.put("hasGateReadingContent", BibleGateNavigator.assetExists(ctx));
         ret.put("accessibilityServiceEnabled", isAccessibilityServiceEnabled(ctx));
-        ret.put("usageStatsPermissionGranted", UsageStatsHelper.hasUsageAccess(ctx));
         ret.put("displayOverOtherAppsGranted", canDrawOverlays(ctx));
         call.resolve(ret);
     }
@@ -84,22 +83,6 @@ public class AppLockPlugin extends Plugin {
         Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         getContext().startActivity(intent);
-        call.resolve();
-    }
-
-    /** Settings → Special app access → Usage access (official foreground detection). */
-    @PluginMethod
-    public void openUsageAccessSettings(PluginCall call) {
-        Intent intent = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS);
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        try {
-            getContext().startActivity(intent);
-        } catch (Exception e) {
-            Intent fallback = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-            fallback.setData(Uri.parse("package:" + getContext().getPackageName()));
-            fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            getContext().startActivity(fallback);
-        }
         call.resolve();
     }
 

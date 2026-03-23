@@ -28,7 +28,7 @@ export const UI_STRINGS: Record<'en' | 'am', Record<string, string>> = {
     'settings.cancel': 'Cancel',
     'appLock.title': 'Focus lock (Android)',
     'appLock.intro':
-      'Choose apps below. Each time you open one, Senay asks for a short reading first; it still counts toward your routine.',
+      'Pick apps below. Opening a locked app shows a Bible reading gate right away. After you finish, you can use that app; the same app asks again about 2 hours later (each app is separate). Enable Accessibility; allow Display over other apps if the gate does not show.',
     'appLock.setupTitle': 'Android setup',
     'appLock.rowAccessibility': 'Accessibility service',
     'appLock.rowUsage': 'Usage access',
@@ -163,7 +163,7 @@ export const UI_STRINGS: Record<'en' | 'am', Record<string, string>> = {
     'settings.cancel': 'ተወው',
     'appLock.title': 'ትኩረት መቆለፊያ (አንድሮይድ)',
     'appLock.intro':
-      'መተግበሪያዎችን ከታች ይምረጡ። በየጊዜው ሲከፍቱ አስቀድሞ አጭር ንባብ ይጠየቃል፤ ለልምምድዎ እንደቀድሞ ይቆጠራል።',
+      'መተግበሪያዎችን ከታች ይምረጡ። የተቆለፈ መተግበሪያ ሲከፈት ወዲያውኑ የመጽሐፍ ቅዱስ ንባብ ይጠየቃል። ካጠናቁ በኋላ መጠቀም ይችላሉ፤ እንደገና ለመጠየቅ ተመሳሳይ መተግበሪያ ከ2 ሰዓት በኋላ ነው። የተደራሽነት አገልግሎት ያንቁ፤ መግቢያው ካልታየ በሌሎች ላይ ማሳየት ይፍቀዱ።',
     'appLock.setupTitle': 'የአንድሮይድ ቅንብሮች',
     'appLock.rowAccessibility': 'የተደራሽነት አገልግሎት',
     'appLock.rowUsage': 'የአጠቃቀም መዳረሻ',

@@ -19,7 +19,7 @@
     <string name="app_lock_scroll_hint">Scroll to the bottom to continue.</string>
     <string name="app_lock_open_app_placeholder">Open app</string>
     <string name="app_lock_open_app_fmt">Open %1$s</string>
-    <string name="app_lock_footer_next_lock">Next time: you’ll see this gate again when you leave this app or after about one hour.</string>
+    <string name="app_lock_footer_next_lock">You can use this app now. The reading gate returns for this app about 2 hours after you tap Finish.</string>
     <string name="app_lock_loading">Loading passage…</string>
     <string name="app_lock_bible_missing">Bible text not found. Reinstall Senay or run Sync in the app.</string>
 </resources>

@@ -283,8 +283,11 @@ export const useProgress = (cloudUid?: string | null) => {
         return val >= start || val <= end;
       });
       const holiday = holidays.find(h => h.month === ethDate.month && h.day === ethDate.day);
-      return { 
-        fastingColor: season?.color || null, 
+      return {
+        ethiopianDay: ethDate.day,
+        ethiopianMonth: ethDate.month,
+        ethiopianMonthName: ethDate.monthName,
+        fastingColor: season?.color || null,
         fastingName: season?.name || null,
         holidayName: holiday?.name || null,
         isMajorHoliday: holiday?.type === 'Major'
@@ -294,33 +297,34 @@ export const useProgress = (cloudUid?: string | null) => {
     for (let i = leadingDays; i > 0; i--) {
       const d = new Date(year, month, 1 - i);
       const dStr = getLocalDateString(d);
-      data.push({ 
-        count: stats.studyHistory[dStr] || 0, 
-        isToday: dStr === todayStr, 
-        isPadding: true, 
-        ...findLiturgicalInfo(d) 
+      data.push({
+        count: stats.studyHistory[dStr] || 0,
+        isToday: dStr === todayStr,
+        isPadding: true,
+        ...findLiturgicalInfo(d)
       });
     }
 
     for (let i = 1; i <= lastDayOfMonth.getDate(); i++) {
       const d = new Date(year, month, i);
       const dStr = getLocalDateString(d);
-      data.push({ 
-        count: stats.studyHistory[dStr] || 0, 
-        isToday: dStr === todayStr, 
-        isPadding: false, 
-        ...findLiturgicalInfo(d) 
+      data.push({
+        count: stats.studyHistory[dStr] || 0,
+        isToday: dStr === todayStr,
+        isPadding: false,
+        ...findLiturgicalInfo(d)
       });
     }
 
+    let trailingDay = 1;
     while (data.length % 7 !== 0) {
-      const d = new Date(year, month + 1, data.length - leadingDays - lastDayOfMonth.getDate() + 1);
+      const d = new Date(year, month + 1, trailingDay++);
       const dStr = getLocalDateString(d);
-      data.push({ 
-        count: stats.studyHistory[dStr] || 0, 
-        isToday: dStr === todayStr, 
-        isPadding: true, 
-        ...findLiturgicalInfo(d) 
+      data.push({
+        count: stats.studyHistory[dStr] || 0,
+        isToday: dStr === todayStr,
+        isPadding: true,
+        ...findLiturgicalInfo(d)
       });
     }
 
