@@ -145,6 +145,17 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
 
       {state && (
         <div className="space-y-5">
+          {!state.enabled && (
+            <div className="rounded-2xl border border-theme bg-[var(--card-bg)]/60 p-5 space-y-2">
+              <div className="text-sm font-bold text-[var(--text-primary)]">
+                {t('appLock.streakTrackingTitle')}
+              </div>
+              <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
+                {t('appLock.streakTrackingBody')}
+              </p>
+            </div>
+          )}
+
           <button
             type="button"
             disabled={busy}
@@ -172,93 +183,122 @@ export const AppLockSettings: React.FC<Props> = ({ onChange }) => {
             </div>
           </button>
 
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
-              {t('appLock.gateStep')}
-            </p>
-            <div className="flex rounded-xl border border-theme p-1 gap-1 bg-[var(--card-bg)]">
-              {(['paragraph', 'chapter'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void setMode(m)}
-                  className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${
-                    state.mode === m
-                      ? 'bg-[var(--gold-muted)] text-[var(--text-primary)] shadow-sm'
-                      : 'text-[var(--text-muted)]'
-                  }`}
-                >
-                  {m === 'paragraph' ? t('appLock.modeParagraph') : t('appLock.modeChapter')}
-                </button>
-              ))}
-            </div>
-            <p className="text-[10px] text-[var(--text-secondary)] mt-2 leading-relaxed">{modeHint}</p>
-          </div>
-
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
-              {t('appLock.setupTitle')}
-            </p>
-            <div className="rounded-xl border border-theme overflow-hidden divide-y divide-theme">
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void AppLock.openAccessibilitySettings()}
-                className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
-              >
-                <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
-                  {t('appLock.rowAccessibility')}
-                </span>
-                <span
-                  className={`text-[10px] font-bold uppercase shrink-0 ${
-                    state.accessibilityServiceEnabled ? 'text-emerald-500' : 'text-amber-500'
-                  }`}
-                >
-                  {state.accessibilityServiceEnabled ? t('appLock.badgeOn') : t('appLock.badgeOff')}
-                </span>
-                <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold">
-                {t('appLock.lockedApps')}
+          {state.enabled && (
+            <>
+              <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed border-l-2 border-[var(--gold)]/40 pl-3">
+                {t('appLock.powerUserHint')}
               </p>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => void openPicker()}
-                className="text-[10px] font-bold uppercase tracking-wider text-[var(--gold)]"
-              >
-                {t('appLock.addApp')}
-              </button>
-            </div>
-            {state.packages.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)] py-2">{t('appLock.noApps')}</p>
-            ) : (
-              <ul className="rounded-xl border border-theme divide-y divide-theme overflow-hidden">
-                {state.packages.map((pkg) => (
-                  <li key={pkg} className="flex items-center gap-3 px-4 py-3 bg-[var(--card-bg)]/50">
-                    <div className="min-w-0 flex-1 text-sm font-medium text-[var(--text-primary)] truncate">
-                      {packageLabels[pkg] ?? pkg}
-                    </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
+                  {t('appLock.gateStep')}
+                </p>
+                <div className="flex rounded-xl border border-theme p-1 gap-1 bg-[var(--card-bg)]">
+                  {(['paragraph', 'chapter'] as const).map((m) => (
                     <button
+                      key={m}
                       type="button"
                       disabled={busy}
-                      onClick={() => removePackage(pkg)}
-                      className="p-1.5 text-[var(--text-muted)] hover:text-red-400 shrink-0 rounded-lg"
-                      aria-label={`Remove ${packageLabels[pkg] ?? pkg}`}
+                      onClick={() => void setMode(m)}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        state.mode === m
+                          ? 'bg-[var(--gold-muted)] text-[var(--text-primary)] shadow-sm'
+                          : 'text-[var(--text-muted)]'
+                      }`}
                     >
-                      <Icons.Close className="w-4 h-4" />
+                      {m === 'paragraph' ? t('appLock.modeParagraph') : t('appLock.modeChapter')}
                     </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)] mt-2 leading-relaxed">{modeHint}</p>
+              </div>
+
+              <div>
+                <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold mb-2">
+                  {t('appLock.setupTitle')}
+                </p>
+                <div className="rounded-xl border border-theme overflow-hidden divide-y divide-theme">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void AppLock.openAccessibilitySettings()}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
+                  >
+                    <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
+                      {t('appLock.rowAccessibility')}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase shrink-0 ${
+                        state.accessibilityServiceEnabled ? 'text-emerald-500' : 'text-amber-500'
+                      }`}
+                    >
+                      {state.accessibilityServiceEnabled ? t('appLock.badgeOn') : t('appLock.badgeOff')}
+                    </span>
+                    <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void AppLock.openDisplayOverOtherAppsSettings()}
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-[var(--card-bg)] transition-colors active:bg-[var(--gold-muted)]/30"
+                  >
+                    <span className="flex-1 min-w-0 text-sm font-semibold text-[var(--text-primary)]">
+                      {t('appLock.displayOverApps')}
+                    </span>
+                    <span
+                      className={`text-[10px] font-bold uppercase shrink-0 ${
+                        state.displayOverOtherAppsGranted ? 'text-emerald-500' : 'text-amber-500'
+                      }`}
+                    >
+                      {state.displayOverOtherAppsGranted ? t('appLock.displayOverOn') : t('appLock.displayOverOff')}
+                    </span>
+                    <Icons.ChevronRight className="w-4 h-4 text-[var(--text-muted)] shrink-0" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-2 leading-relaxed">
+                  {t('appLock.displayOverAppsDesc')}
+                </p>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-semibold">
+                    {t('appLock.lockedApps')}
+                  </p>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void openPicker()}
+                    className="text-[10px] font-bold uppercase tracking-wider text-[var(--gold)]"
+                  >
+                    {t('appLock.addApp')}
+                  </button>
+                </div>
+                {state.packages.length === 0 ? (
+                  <p className="text-xs text-[var(--text-muted)] py-2">{t('appLock.noApps')}</p>
+                ) : (
+                  <ul className="rounded-xl border border-theme divide-y divide-theme overflow-hidden">
+                    {state.packages.map((pkg) => (
+                      <li key={pkg} className="flex items-center gap-3 px-4 py-3 bg-[var(--card-bg)]/50">
+                        <div className="min-w-0 flex-1 text-sm font-medium text-[var(--text-primary)] truncate">
+                          {packageLabels[pkg] ?? pkg}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={busy}
+                          onClick={() => removePackage(pkg)}
+                          className="p-1.5 text-[var(--text-muted)] hover:text-red-400 shrink-0 rounded-lg"
+                          aria-label={`Remove ${packageLabels[pkg] ?? pkg}`}
+                        >
+                          <Icons.Close className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </>
+          )}
         </div>
       )}
 

@@ -1,3 +1,7 @@
+/**
+ * In-app notification center + optional one-shot tray mirrors while the WebView is alive.
+ * Repeating daily routine alarms are scheduled natively in `./nativeNotifications` (`LocalNotifications`).
+ */
 import type { RitualTime, UserStats } from '../types';
 
 const DEDUPE_KEY = 'senay_behavior_notify_dedupe';

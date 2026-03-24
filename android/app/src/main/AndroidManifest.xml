@@ -63,7 +63,6 @@
                 <action android:name="android.intent.action.DATE_CHANGED" />
             </intent-filter>
             <intent-filter>
-                <action android:name="com.senay.app.ACTION_WIDGET_MINUTE_TICK" />
                 <action android:name="com.senay.app.ACTION_WIDGET_MIDNIGHT" />
             </intent-filter>
         </receiver>

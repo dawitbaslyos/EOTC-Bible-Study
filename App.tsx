@@ -27,7 +27,8 @@ import {
   sendWelcomeNotification,
   syncRitualRemindersFromStats,
   rescheduleOpenAppReminder,
-  syncStreakReminderFromStats
+  syncStreakReminderFromStats,
+  refreshNativeReminderSchedules
 } from './utils/nativeNotifications';
 import { runDailyBehaviorNotifications } from './utils/notificationBehaviors';
 import { pickDailyQuoteFromBible } from './utils/dailyQuoteFromBible';
@@ -38,6 +39,7 @@ import type { User as FirebaseUser } from 'firebase/auth';
 import { getRedirectResult, onAuthStateChanged, signOut } from 'firebase/auth';
 import { auth } from './firebaseClient';
 import { useAppLanguage } from './contexts/AppLanguageContext';
+import { Capacitor } from '@capacitor/core';
 
 interface UserProfile {
   name: string;
@@ -92,7 +94,7 @@ function resolveCloudUid(user: UserProfile | null): string | null {
 }
 
 const App: React.FC = () => {
-  const { t } = useAppLanguage();
+  const { t, language: appUiLanguage } = useAppLanguage();
   // One-time hydrate from localStorage. Async bootstrap must NOT re-read storage (Android race with Google sign-in).
   const [user, setUser] = useState<UserProfile | null>(() => readUserFromStorage());
   const [phase, setPhase] = useState<AppPhase>(AppPhase.DASHBOARD);
@@ -120,6 +122,9 @@ const App: React.FC = () => {
   const { stats, completeChapter, applyGateCompletionsFromLock, getNextChapter, updateLastAccessed, saveStats, getHeatmapData, daysPracticed } = useProgress(cloudUid);
   const { notifications, notify, markAsRead, clearAll, unreadCount, activeToast, dismissToast } = useNotifications();
 
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
+
   const availableBooks = useMemo(() => {
     if (!bibleData || !allBooks.length) return [];
 
@@ -140,6 +145,16 @@ const App: React.FC = () => {
 
     return matched;
   }, [bibleData, allBooks]);
+
+  const bibleHasNextChapter = useMemo(() => {
+    if (isDailyWudase || !readingData || readingData.bookId === 'wudase' || !bibleData) return false;
+    const bookObj = bibleData.find(
+      (b) => b.book_short_name_en.toLowerCase() === readingData.bookId.toLowerCase()
+    );
+    if (!bookObj?.chapters?.length) return false;
+    const idx = bookObj.chapters.findIndex((c) => c.chapter === readingData.chapter);
+    return idx >= 0 && idx < bookObj.chapters.length - 1;
+  }, [isDailyWudase, readingData, bibleData]);
 
   useEffect(() => {
     document.documentElement.className = theme === 'light' ? 'light-theme' : '';
@@ -376,9 +391,30 @@ const App: React.FC = () => {
     user?.uid,
     user?.provider,
     hasSeenOnboarding,
+    appUiLanguage,
     JSON.stringify(stats.preferredRituals ?? []),
     JSON.stringify(stats.ritualReminderTimes ?? {})
   ]);
+
+  // Re-apply native schedules when returning from background (OS may drop alarms; user may grant exact alarms).
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (!user || !hasSeenOnboarding) return;
+
+    let remove: (() => void) | undefined;
+    void import('@capacitor/app').then(({ App }) => {
+      void App.addListener('appStateChange', ({ isActive }) => {
+        if (!isActive) return;
+        refreshNativeReminderSchedules(statsRef.current).catch(() => {});
+      }).then((handle) => {
+        remove = () => void handle.remove();
+      });
+    });
+
+    return () => {
+      remove?.();
+    };
+  }, [user?.uid, hasSeenOnboarding]);
 
   // Native: streak nudge at next 8 PM when streak ≥ 1 and no session today.
   useEffect(() => {
@@ -725,14 +761,33 @@ const App: React.FC = () => {
           <ReadingPhase 
             data={readingData} 
             isDailyManna={isDailyWudase}
+            bibleHasNextChapter={bibleHasNextChapter}
             onNext={() => {
-              if (!isDailyWudase || !readingData) {
+              if (isDailyWudase && readingData) {
+                if (readingData.chapter === 1) startFlow('wudase', true, 2);
+                else if (readingData.chapter === 2) startFlow('wudase', true, 3);
+                else goToPhase(AppPhase.SUMMARY);
+                return;
+              }
+              if (!readingData || !bibleData || readingData.bookId === 'wudase') {
                 handleFinishReading();
                 return;
               }
-              if (readingData.chapter === 1) startFlow('wudase', true, 2);
-              else if (readingData.chapter === 2) startFlow('wudase', true, 3);
-              else goToPhase(AppPhase.SUMMARY);
+              const bookObj = bibleData.find(
+                (b) => b.book_short_name_en.toLowerCase() === readingData.bookId.toLowerCase()
+              );
+              if (!bookObj) {
+                handleFinishReading();
+                return;
+              }
+              const idx = bookObj.chapters.findIndex((c) => c.chapter === readingData.chapter);
+              if (idx < 0 || idx >= bookObj.chapters.length - 1) {
+                handleFinishReading();
+                return;
+              }
+              const nextChapterNum = bookObj.chapters[idx + 1].chapter;
+              completeChapter(readingData.bookId, readingData.chapter);
+              startFlow(readingData.bookId, false, nextChapterNum);
             }}
             onOpenMemhir={() => goToPhase(AppPhase.ASK_MEMHIR)}
             onFinish={() => goToPhase(AppPhase.DASHBOARD)}

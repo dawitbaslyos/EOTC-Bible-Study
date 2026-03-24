@@ -15,7 +15,6 @@ public class WidgetAlarmReceiver extends BroadcastReceiver {
                 || Intent.ACTION_TIME_CHANGED.equals(action)
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(action)
                 || Intent.ACTION_DATE_CHANGED.equals(action)
-                || WidgetAlarmScheduler.ACTION_WIDGET_MINUTE_TICK.equals(action)
                 || WidgetAlarmScheduler.ACTION_WIDGET_MIDNIGHT.equals(action)) {
 
             SenayCalendarWidget.refreshAll(context);
@@ -28,9 +27,6 @@ public class WidgetAlarmReceiver extends BroadcastReceiver {
                 WidgetAlarmScheduler.startIfWidgetsExist(context);
             }
 
-            if (WidgetAlarmScheduler.ACTION_WIDGET_MINUTE_TICK.equals(action)) {
-                WidgetAlarmScheduler.scheduleNextMinuteTick(context);
-            }
             if (WidgetAlarmScheduler.ACTION_WIDGET_MIDNIGHT.equals(action)) {
                 WidgetAlarmScheduler.scheduleNextMidnight(context);
             }

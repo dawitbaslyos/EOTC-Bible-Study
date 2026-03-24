@@ -43,6 +43,11 @@ const config: CapacitorConfig = {
     StatusBar: {
       style: 'dark',
       backgroundColor: '#0a0a0c'
+    },
+    /** Android: `res/drawable/ic_senay_notification` — status-bar icon (replaces default “I”). */
+    LocalNotifications: {
+      smallIcon: 'ic_senay_notification',
+      iconColor: '#C9A227'
     }
   }
 };

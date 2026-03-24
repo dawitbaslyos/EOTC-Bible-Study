@@ -1,6 +1,37 @@
+/**
+ * Native routine reminders (Android/iOS) via `@capacitor/local-notifications`.
+ *
+ * Repeating daily alarms at the user's morning/evening times (default morning **6:00 device local**
+ * for Divine Wudase). They fire when the app is backgrounded or killed — unlike React `setInterval`,
+ * which only backs in-app nudges (`runDailyBehaviorNotifications` in `./notificationBehaviors`).
+ *
+ * The Ethiopian calendar widget uses `AlarmManager` for local midnight plus the system
+ * `ACTION_TIME_TICK` broadcast for the clock (`WidgetAlarmScheduler` / `WidgetTimeTickRegistration`).
+ */
 import { Capacitor } from '@capacitor/core';
-import { LocalNotifications } from '@capacitor/local-notifications';
+import { LocalNotifications, type LocalNotificationDescriptor } from '@capacitor/local-notifications';
+import { UI_STRINGS } from '../locales/strings';
 import type { UserStats, RitualTime } from '../types';
+
+function trayLocale(): 'en' | 'am' {
+  try {
+    return localStorage.getItem('senay_app_language') === 'amharic' ? 'am' : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+function trayT(key: string): string {
+  const bundle = UI_STRINGS[trayLocale()];
+  return bundle[key] ?? UI_STRINGS.en[key] ?? key;
+}
+
+/** `@drawable/ic_senay_notification` — avoids Capacitor’s default “I” status icon on Android. */
+const ANDROID_NOTIFICATION_ICON = 'ic_senay_notification';
+
+function androidIconFields(): { smallIcon: string } | Record<string, never> {
+  return Capacitor.getPlatform() === 'android' ? { smallIcon: ANDROID_NOTIFICATION_ICON } : {};
+}
 
 export async function sendWelcomeNotification(name: string) {
   if (!Capacitor.isNativePlatform()) return;
@@ -17,7 +48,8 @@ export async function sendWelcomeNotification(name: string) {
         id: Date.now(),
         title: 'Peace be with you',
         body: `Welcome to your sanctuary, ${name}.`,
-        schedule: { at: new Date(Date.now() + 2_000) }
+        schedule: { at: new Date(Date.now() + 2_000) },
+        ...androidIconFields()
       }
     ]
   });
@@ -42,7 +74,8 @@ export async function scheduleDailyReminder(hour: number, minute: number) {
           every: 'day',
           on: { hour, minute },
           allowWhileIdle: true
-        }
+        },
+        ...androidIconFields()
       }
     ]
   });
@@ -96,7 +129,8 @@ export async function scheduleTestReminderInSeconds(delaySeconds: number = 3): P
         title: 'Senay — test',
         body: 'Local notifications are working. Your routine alarms use the same channel.',
         channelId: PRAYER_CHANNEL_ID,
-        schedule: { at: new Date(Date.now() + delaySeconds * 1000), allowWhileIdle: true }
+        schedule: { at: new Date(Date.now() + delaySeconds * 1000), allowWhileIdle: true },
+        ...androidIconFields()
       }
     ]
   });
@@ -162,15 +196,7 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
   const rituals = stats.preferredRituals?.length ? stats.preferredRituals : ['day'];
   const times = stats.ritualReminderTimes || {};
 
-  const notifications: {
-    id: number;
-    title: string;
-    body: string;
-    largeBody?: string;
-    summaryText?: string;
-    channelId: string;
-    schedule: { every: 'day'; on: { hour: number; minute: number }; allowWhileIdle: boolean };
-  }[] = [];
+  const notifications: LocalNotificationDescriptor[] = [];
 
   const pick = (r: RitualTime, defaults: { hour: number; minute: number }) => {
     const t = times[r];
@@ -182,27 +208,33 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
 
   if (rituals.includes('day')) {
     const t = pick('day', DEFAULT_MORNING);
+    const title = trayT('notify.morningTitle');
+    const body = trayT('notify.morningBody');
     notifications.push({
       id: PRAYER_MORNING_ID,
-      title: 'Morning routine',
-      body: 'Time for your morning reading and prayer. Open Senay when you are ready.',
-      largeBody: 'Time for your morning reading and prayer. Open Senay to continue.',
-      summaryText: 'Morning routine',
+      title,
+      body,
+      largeBody: body,
+      summaryText: title,
       channelId: PRAYER_CHANNEL_ID,
-      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true }
+      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true },
+      ...androidIconFields()
     });
   }
 
   if (rituals.includes('night')) {
     const t = pick('night', DEFAULT_EVENING);
+    const title = trayT('notify.eveningTitle');
+    const body = trayT('notify.eveningBody');
     notifications.push({
       id: PRAYER_AFTERNOON_ID,
-      title: 'Evening routine',
-      body: 'Time for your evening reflection. Open Senay to read and pray.',
-      largeBody: 'Evening routine reminder. Open Senay to continue your readings.',
-      summaryText: 'Evening routine',
+      title,
+      body,
+      largeBody: body,
+      summaryText: title,
       channelId: PRAYER_CHANNEL_ID,
-      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true }
+      schedule: { every: 'day', on: { hour: t.hour, minute: t.minute }, allowWhileIdle: true },
+      ...androidIconFields()
     });
   }
 
@@ -211,6 +243,15 @@ export async function syncRitualRemindersFromStats(stats: UserStats): Promise<bo
   }
 
   return true;
+}
+
+/**
+ * Re-applies ritual + streak alarms (e.g. after returning from background or granting exact alarms).
+ * Idempotent for fixed notification IDs.
+ */
+export async function refreshNativeReminderSchedules(stats: UserStats): Promise<void> {
+  await syncRitualRemindersFromStats(stats);
+  await syncStreakReminderFromStats(stats);
 }
 
 /**
@@ -248,7 +289,8 @@ export async function syncStreakReminderFromStats(stats: UserStats): Promise<voi
         title: "Don't lose your streak",
         body: `You have a ${stats.streak}-day streak. Open Senay for today's reading before the day ends.`,
         channelId: EVENTS_CHANNEL_ID,
-        schedule: { at, allowWhileIdle: true }
+        schedule: { at, allowWhileIdle: true },
+        ...androidIconFields()
       }
     ]
   });
@@ -279,7 +321,8 @@ export async function rescheduleOpenAppReminder(daysFromNow = 3): Promise<void> 
         title: 'Your Senay moment',
         body: "It's been a few days. Step back into prayer and reading when you can.",
         channelId: EVENTS_CHANNEL_ID,
-        schedule: { at }
+        schedule: { at },
+        ...androidIconFields()
       }
     ]
   });
@@ -305,7 +348,8 @@ export async function showTrayNotification(title: string, body: string): Promise
         title,
         body,
         channelId: EVENTS_CHANNEL_ID,
-        schedule: { at: new Date(Date.now() + 750) }
+        schedule: { at: new Date(Date.now() + 750) },
+        ...androidIconFields()
       }
     ]
   });

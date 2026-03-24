@@ -62,6 +62,8 @@ function persistWudaseScript(v: LanguageVisibility) {
 interface Props {
   data: DailyManna;
   isDailyManna: boolean;
+  /** Bible only: more chapters after this one → show “Next chapter” instead of “Finish”. */
+  bibleHasNextChapter?: boolean;
   onNext: () => void;
   onOpenMemhir: () => void;
   onFinish: () => void;
@@ -74,7 +76,15 @@ const SCRIPT_SEGMENTS_BIBLE: { id: ReadingScriptMode; label: string }[] = [
   { id: 'english', label: 'E' }
 ];
 
-const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhir, onFinish, onSelectChapter }) => {
+const ReadingPhase: React.FC<Props> = ({
+  data,
+  isDailyManna,
+  bibleHasNextChapter = false,
+  onNext,
+  onOpenMemhir,
+  onFinish,
+  onSelectChapter
+}) => {
   const { t } = useAppLanguage();
   const [readingScript, setReadingScriptState] = useState<ReadingScriptMode>(() => {
     const raw = readStoredReadingScript();
@@ -438,7 +448,9 @@ const ReadingPhase: React.FC<Props> = ({ data, isDailyManna, onNext, onOpenMemhi
                 : data.chapter === 2
                   ? t('reading.anqaseBerhanNext')
                   : t('reading.summarize')
-              : t('reading.finishScroll')}
+              : bibleHasNextChapter
+                ? t('reading.nextChapter')
+                : t('reading.finishChapter')}
           </span>
         </button>
       </div>

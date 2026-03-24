@@ -62,6 +62,10 @@ public class ReadingGateAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        if (!AppLockPrefs.isEnabled(this)) {
+            removeOverlay();
+            return;
+        }
         if (event == null) {
             return;
         }

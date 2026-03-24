@@ -25,6 +25,10 @@ import java.util.List;
 /**
  * Batch runtime permissions for Senay (notifications + microphone) via Capacitor’s
  * permission flow. Exact alarms use a settings intent when needed.
+ *
+ * <p>{@code POST_NOTIFICATIONS} is required for the JS layer (Capacitor Local Notifications) to
+ * schedule daily Wudase / routine reminders and streak nudges. This plugin only requests the permission;
+ * scheduling is done from the WebView via Capacitor.</p>
  */
 @CapacitorPlugin(
         name = "SenayPermissions",
